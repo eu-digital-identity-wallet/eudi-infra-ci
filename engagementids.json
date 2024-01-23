@@ -1,0 +1,26 @@
+{
+    "org_name/repository_name": {
+        "main": {
+            "sast": 0,
+            "secretscanning": 0,
+            "sca": 0
+        },
+        "branch_name_placeholder": {
+            "sast": 0,
+            "secretscanning": 0,
+            "sca": 0
+    },
+    "org_name/repository_name2": {
+        "main": {
+            "sast": 0,
+            "secretscanning": 0,
+            "sca": 0
+        },
+        "branch_name_placeholder": {
+            "sast": 0,
+            "secretscanning": 0,
+            "sca": 0
+        }
+    }
+}
+}
