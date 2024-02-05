@@ -1,0 +1,36 @@
+name: SCA - Dependency Check (BT)
+on:
+  workflow_call:
+  
+jobs:
+   SCA:
+    name: SCA - Dependency Check Analysis (BT)
+    runs-on:  ubuntu-latest
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+      - name: Cache Dependency-Check Data
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/dependency-check-data
+          key: ${{ runner.os }}-dependency-check-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-dependency-check
+      - name: Build with Gradle Wrapper & Run Dependency-Check
+        uses: gradle/gradle-build-action@v2.11.1
+        with:
+          gradle-version: wrapper
+          arguments: dependencyCheckAnalyze --info
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      - name: Upload results - SCA
+        uses: actions/upload-artifact@master
+        with:
+           name: Dependency Check Report
+           path: ${{github.workspace}}/build/reports/dependency-check-report.html
