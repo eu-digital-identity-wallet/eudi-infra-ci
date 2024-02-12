@@ -1,0 +1,72 @@
+name: SCA - Dependency Check
+on:
+  workflow_call:
+
+jobs:
+  SCA:
+   name: SCA - Dependency Check Analysis
+   runs-on: ubuntu-latest
+   steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+    # Caches the /data directory of Dependency Check which holds the local copy of NVD
+      - name: Cache Dependency Check Data
+        uses: actions/cache@v4
+        with:
+          path: dependency-check/data
+          key: dependency-check-data-${{ runner.os }}
+          restore-keys: |
+            dependency-check-data-
+            
+    # Caches dependency-check's directory to avoid downloading the tool every time
+      - name: Cache Dependency Check CLI
+        uses: actions/cache@v4
+        with:
+          path: dependency-check
+          key: dependency-check-cli-9.0.9
+          restore-keys: |
+            dependency-check-cli-
+            
+     # Runs the dependency-check.sh script. If it does not exist (e.g. restored from cache), download the tool and run it
+      - name: Dependency Check Scan - CLI
+        run: |
+          if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f HTML -o reports --project ${{ github.repository }}
+          else
+             wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.9/dependency-check-9.0.9-release.zip
+             unzip dependency-check-9.0.9-release.zip
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f HTML -o reports --project ${{ github.repository }}
+          fi
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          
+      # Uploads the results of the tool as artifact
+      - name: Upload results - SCA
+        uses: actions/upload-artifact@master
+        with:
+           name: Depcheck report
+           path: ${{github.workspace}}/reports
+
+      # Posts the result of the scan to DefectDojo
+      - name: Send report to DefectDojo
+        if: (false)
+        run: |
+          curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
+          export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "$DOJO_URL/api/v2/import-scan/" \
+                            -H "Authorization: Token $DOJO_TOKEN" \
+                            -F "engagement=$ID" \
+                            -F "active=true" \
+                            -F "scan_type=Dependency Check Scan" \
+                            -F "minimum_severity=Info" \
+                            -F "skip_duplicates=true" \
+                            -F "close_old_findings=true" \
+                            -F "file=/reports/dependency-check-report.html" \
+                            -F "scan_date=$SCAN_DATE"
+        env:
+         DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+         DOJO_URL: ${{ secrets.DOJO_URL }}
