@@ -1,7 +1,11 @@
 name: SAST - SonarCloud (BT)
 on:
   workflow_call:
-
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      SONAR_TOKEN:
+        required: true
 jobs:
   check_secret:
     name: Check secret presence
