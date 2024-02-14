@@ -30,6 +30,7 @@ jobs:
         with:
           gradle-version: wrapper
           arguments: dependencyCheckAnalyze --info
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       - name: Upload results - SCA
         uses: actions/upload-artifact@master
         with:
