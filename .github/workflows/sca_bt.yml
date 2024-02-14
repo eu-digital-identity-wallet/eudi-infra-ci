@@ -1,6 +1,9 @@
 name: SCA - Dependency Check (BT)
 on:
   workflow_call:
+    secrets:
+      NVD_API_KEY:
+        required: true
   
 jobs:
    SCA:
