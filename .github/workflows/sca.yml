@@ -46,6 +46,7 @@ jobs:
           else
              wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.9/dependency-check-9.0.9-release.zip
              unzip dependency-check-9.0.9-release.zip
+             gem install bundler-audit
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f HTML -o reports --project ${{ github.repository }}
           fi
         env:
