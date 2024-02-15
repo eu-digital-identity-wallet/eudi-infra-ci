@@ -3,7 +3,7 @@ on:
   workflow_call:
     secrets:
       NVD_API_KEY:
-        required: true
+        required: false
       DOJO_TOKEN: 
         required: false
       DOJO_URL: 
