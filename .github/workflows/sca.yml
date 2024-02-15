@@ -41,12 +41,12 @@ jobs:
      # Runs the dependency-check.sh script. If it does not exist (e.g. restored from cache), download the tool and run it
       - name: Dependency Check Scan - CLI
         run: |
+         sudo gem install bundler-audit
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f HTML -o reports --project ${{ github.repository }}
           else
              wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.9/dependency-check-9.0.9-release.zip
              unzip dependency-check-9.0.9-release.zip
-             sudo gem install bundler-audit
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f HTML -o reports --project ${{ github.repository }}
           fi
         env:
