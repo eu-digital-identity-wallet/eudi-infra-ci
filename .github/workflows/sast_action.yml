@@ -6,6 +6,10 @@ on:
         required: false
       SONAR_TOKEN:
         required: true
+      DOJO_TOKEN: 
+        required: false
+      DOJO_URL: 
+        required: false
         
 jobs:
 
