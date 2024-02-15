@@ -1,10 +1,18 @@
-name: SCA - Dependency Check
+name: SCA - Dependency Check (CLI)
 on:
   workflow_call:
-
+    secrets:
+      NVD_API_KEY:
+        required: true
+      DOJO_TOKEN: 
+        required: true
+      DOJO_URL: 
+        required: true
+        
 jobs:
+
   SCA:
-   name: SCA - Dependency Check Analysis
+   name: SCA - Dependency Check Analysis (CLI)
    runs-on: ubuntu-latest
    steps:
       - name: Checkout code
