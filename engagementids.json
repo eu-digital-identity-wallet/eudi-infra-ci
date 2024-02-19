@@ -1,26 +1,16 @@
 {
-    "org_name/repository_name": {
-        "main": {
-            "sastID": 0,
-            "secretscanningID": 0,
-            "scaID": 0
-        },
-        "branch_name_placeholder": {
-            "sastID": 0,
-            "secretscanningID": 0,
-            "scaID": 0
-    },
-    "org_name/repository_name2": {
-        "main": {
-            "sastID": 0,
-            "secretscanningID": 0,
-            "scaID": 0
-        },
-        "branch_name_placeholder": {
-            "sastID": 0,
-            "secretscanningID": 0,
-            "scaID": 0
-        }
-    }
-}
+   "eu-digital-identity-wallet/eudi-lib-ios-presentation-exchange-swift": {
+       "main": {
+           "sastID": 7,
+           "scaID": 8,
+           "secretscanningID": 9
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt": {
+       "main": {
+           "sastID": 10,
+           "scaID": 11,
+           "secretscanningID": 12
+       }
+   }
 }
