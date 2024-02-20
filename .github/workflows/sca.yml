@@ -61,7 +61,7 @@ jobs:
 
       # Posts the result of the scan to DefectDojo
       - name: Send report to DefectDojo
-        if: (github.repository_owner == 'eu-digital-identity-wallet')
+        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name = 'main')
         run: |
           curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
