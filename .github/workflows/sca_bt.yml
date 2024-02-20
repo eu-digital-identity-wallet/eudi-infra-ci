@@ -14,21 +14,25 @@ jobs:
     name: SCA - Dependency Check Analysis (BT)
     runs-on:  ubuntu-latest
     steps:
+    
       - name: Checkout project sources
         uses: actions/checkout@v4
+        
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          
       - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v1
       - name: Cache Dependency-Check Data
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/dependency-check-data
           key: ${{ runner.os }}-dependency-check-${{ hashFiles('**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-dependency-check
+          
       - name: Build with Gradle Wrapper & Run Dependency-Check
         uses: gradle/gradle-build-action@v2.11.1
         with:
@@ -36,8 +40,30 @@ jobs:
           arguments: dependencyCheckAnalyze --info
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          
       - name: Upload results - SCA
         uses: actions/upload-artifact@master
         with:
            name: Dependency Check Report
            path: ${{github.workspace}}/build/reports/dependency-check-report.html
+
+      # Posts the result of the scan to DefectDojo
+      - name: Send report to DefectDojo
+        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main')
+        run: |
+          curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
+          export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "$DOJO_URL/api/v2/import-scan/" \
+                            -H "Authorization: Token $DOJO_TOKEN" \
+                            -F "engagement=$ID" \
+                            -F "active=true" \
+                            -F "scan_type=Dependency Check Scan" \
+                            -F "minimum_severity=Info" \
+                            -F "skip_duplicates=true" \
+                            -F "close_old_findings=true" \
+                            -F "file=@dependency-check-report.xml" \
+                            -F "scan_date=$SCAN_DATE"
+        env:
+         DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+         DOJO_URL: ${{ secrets.DOJO_URL }}
