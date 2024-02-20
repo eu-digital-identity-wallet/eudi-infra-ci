@@ -56,3 +56,44 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+          
+      - name: Setup Node 
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install "sonar-report"  and run it
+        run: |
+          npm install -g sonar-report
+          export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
+          sonar-report \
+           --sonarurl="https://sonarcloud.io" \
+           --sonarorganization="${{ github.repository_owner }}" \
+           --branch="${{ github.ref_name }}" \
+           --sonartoken="${{ secrets.SONAR_TOKEN }}" \
+           --output sonarreport.html \
+           --application="$PROJECTKEY" \
+           --sonarcomponent="$PROJECTKEY"
+        env:
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Send report to DefectDojo
+        if: (github.repository_owner == 'eu-digital-identity-wallet' && (github.event_name == 'push'|| github.event_name == 'workflow_dispatch'))
+        run: |
+          curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
+          export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.sastID' engagementids.json)"
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "https://$DOJO_URL/api/v2/import-scan/" \
+                            -H "Authorization: Token $DOJO_TOKEN" \
+                            -F "engagement=$ID" \
+                            -F "active=true" \
+                            -F "scan_type=SonarQube Scan detailed" \
+                            -F "minimum_severity=Info" \
+                            -F "skip_duplicates=true" \
+                            -F "close_old_findings=true" \
+                            -F "file=@sonarreport.html" \
+                            -F "scan_date=$SCAN_DATE"
+        env:
+         DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+         DOJO_URL: ${{ secrets.DOJO_URL }}
