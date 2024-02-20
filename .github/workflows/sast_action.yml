@@ -84,7 +84,7 @@ jobs:
           curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.sastID' engagementids.json)"
           export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
-          curl -X POST "https://$DOJO_URL/api/v2/import-scan/" \
+          curl -X POST "$DOJO_URL/api/v2/import-scan/" \
                             -H "Authorization: Token $DOJO_TOKEN" \
                             -F "engagement=$ID" \
                             -F "active=true" \
