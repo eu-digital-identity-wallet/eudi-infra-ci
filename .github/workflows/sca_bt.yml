@@ -55,14 +55,14 @@ jobs:
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
           export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
           curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
-                            -H "Authorization: Token $DOJO_TOKEN" \\
+                            -H "Authorization: Token $DOJO_TOKEN" \
                             -F "active=true" \
                             -F "scan_type=Dependency Check Scan" \
                             -F "minimum_severity=Info" \
                             -F "skip_duplicates=true" \
                             -F "close_old_findings=true" \
                             -F "file=@dependency-check-report.xml" \
-                            -F "scan_date=$SCAN_DATE"
+                            -F "scan_date=$SCAN_DATE" \
                             -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
                             -F "engagement_name=Software Composition Analysis - ${{ github.repository }}-${{ github.ref_name }}"
         env:
