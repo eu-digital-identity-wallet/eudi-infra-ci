@@ -49,14 +49,13 @@ jobs:
 
       # Posts the result of the scan to DefectDojo
       - name: Send report to DefectDojo
-        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main')
+        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
         run: |
           curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
           export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
-          curl -X POST "$DOJO_URL/api/v2/import-scan/" \
-                            -H "Authorization: Token $DOJO_TOKEN" \
-                            -F "engagement=$ID" \
+          curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
+                            -H "Authorization: Token $DOJO_TOKEN" \\
                             -F "active=true" \
                             -F "scan_type=Dependency Check Scan" \
                             -F "minimum_severity=Info" \
@@ -64,6 +63,8 @@ jobs:
                             -F "close_old_findings=true" \
                             -F "file=@dependency-check-report.xml" \
                             -F "scan_date=$SCAN_DATE"
+                            -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
+                            -F "engagement_name=Software Composition Analysis - ${{ github.repository }}-${{ github.ref_name }}"
         env:
          DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
          DOJO_URL: ${{ secrets.DOJO_URL }}
