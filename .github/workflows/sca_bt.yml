@@ -63,6 +63,7 @@ jobs:
                             -F "close_old_findings=true" \
                             -F "file=@build/reports/dependency-check-report.xml" \
                             -F "scan_date=$SCAN_DATE" \
+                            -F "auto_create_context=True" \
                             -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
                             -F "engagement_name=Software Composition Analysis - ${{ github.repository }}-${{ github.ref_name }}"
         env:
