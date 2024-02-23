@@ -61,7 +61,7 @@ jobs:
                             -F "minimum_severity=Info" \
                             -F "skip_duplicates=true" \
                             -F "close_old_findings=true" \
-                            -F "file=@dependency-check-report.xml" \
+                            -F "file=@build/reports/dependency-check-report.xml" \
                             -F "scan_date=$SCAN_DATE" \
                             -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
                             -F "engagement_name=Software Composition Analysis - ${{ github.repository }}-${{ github.ref_name }}"
