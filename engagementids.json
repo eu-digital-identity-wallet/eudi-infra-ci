@@ -1,16 +1,163 @@
 {
-   "eu-digital-identity-wallet/eudi-lib-ios-presentation-exchange-swift": {
+   "eu-digital-identity-wallet/eudi-lib-ios-presentation-exchange-swift-main": {
        "main": {
            "sastID": 7,
            "scaID": 8,
            "secretscanningID": 9
        }
    },
-   "eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt": {
+   "eu-digital-identity-wallet/eudi-lib-jvm-sdjwt-kt-main": {
        "main": {
            "sastID": 10,
            "scaID": 11,
            "secretscanningID": 12
+       }
+   },
+   "eu-digital-identity-wallet/eudi-srv-web-verifier-endpoint-23220-4-kt-main": {
+       "main": {
+           "sastID": 13,
+           "scaID": 14,
+           "secretscanningID": 15
+       }
+   },
+   "eu-digital-identity-wallet/eudi-web-verifier-main": {
+       "main": {
+           "sastID": 16,
+           "scaID": 17,
+           "secretscanningID": 18
+       }
+   },
+   "eu-digital-identity-wallet/android-18013-verifier-main": {
+       "main": {
+           "sastID": 19,
+           "scaID": 20,
+           "secretscanningID": 21
+       }
+   },
+   "eu-digital-identity-wallet/spikes-android-openid-siop-main": {
+       "main": {
+           "sastID": 22,
+           "scaID": 23,
+           "secretscanningID": 24
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model-main": {
+       "main": {
+           "sastID": 25,
+           "scaID": 26,
+           "secretscanningID": 27
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-iso18013-security-main": {
+       "main": {
+           "sastID": 28,
+           "scaID": 29,
+           "secretscanningID": 30
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-transfer-main": {
+       "main": {
+           "sastID": 31,
+           "scaID": 32,
+           "secretscanningID": 33
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-android-iso18013-holder-main": {
+       "main": {
+           "sastID": 34,
+           "scaID": 35,
+           "secretscanningID": 36
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-wallet-kit-main": {
+       "main": {
+           "sastID": 37,
+           "scaID": 38,
+           "secretscanningID": 39
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-wallet-storage-main": {
+       "main": {
+           "sastID": 40,
+           "scaID": 41,
+           "secretscanningID": 42
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-web-issuing-eudiw-py-main": {
+       "main": {
+           "sastID": 43,
+           "scaID": 44,
+           "secretscanningID": 45
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-jvm-presentation-exchange-kt-main": {
+       "main": {
+           "sastID": 46,
+           "scaID": 47,
+           "secretscanningID": 48
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-jvm-siop-openid4vp-kt-main": {
+       "main": {
+           "sastID": 49,
+           "scaID": 50,
+           "secretscanningID": 51
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-siop-openid4vp-swift-main": {
+       "main": {
+           "sastID": 52,
+           "scaID": 53,
+           "secretscanningID": 54
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-sdjwt-swift-main": {
+       "main": {
+           "sastID": 55,
+           "scaID": 56,
+           "secretscanningID": 57
+       }
+   },
+   "eu-digital-identity-wallet/eudi-app-ios-wallet-ui-main": {
+       "main": {
+           "sastID": 58,
+           "scaID": 59,
+           "secretscanningID": 60
+       }
+   },
+   "eu-digital-identity-wallet/eudi-app-android-wallet-ui-main": {
+       "main": {
+           "sastID": 61,
+           "scaID": 62,
+           "secretscanningID": 63
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-jvm-openid4vci-kt-main": {
+       "main": {
+           "sastID": 64,
+           "scaID": 65,
+           "secretscanningID": 66
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-ios-openid4vci-swift-main": {
+       "main": {
+           "sastID": 67,
+           "scaID": 68,
+           "secretscanningID": 69
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-android-wallet-core-main": {
+       "main": {
+           "sastID": 70,
+           "scaID": 71,
+           "secretscanningID": 72
+       }
+   },
+   "eu-digital-identity-wallet/eudi-lib-android-wallet-document-manager-main": {
+       "main": {
+           "sastID": 73,
+           "scaID": 74,
+           "secretscanningID": 75
        }
    }
 }
