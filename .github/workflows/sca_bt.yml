@@ -53,6 +53,8 @@ jobs:
         run: |
           curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
+          export FILE=$(find . -type f -name "*dependency-check-report.xml")
+          if [ -z "$FILE" ]; then exit 0
           export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
           curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
                             -H "Authorization: Token $DOJO_TOKEN" \
