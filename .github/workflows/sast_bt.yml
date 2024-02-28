@@ -68,7 +68,8 @@ jobs:
           npm cache clean --force
           npm install -g sonar-report
           export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
-          sudo sonar-report \
+          which sonar-report
+          sonar-report \
            --sonarurl="https://sonarcloud.io" \
            --sonarorganization="${{ github.repository_owner }}" \
            --branch="${{ github.ref_name }}" \
