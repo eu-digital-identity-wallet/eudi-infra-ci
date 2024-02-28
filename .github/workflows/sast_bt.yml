@@ -65,6 +65,7 @@ jobs:
 
       - name: Install "sonar-report"  and run it
         run: |
+          npm cache clean --force
           npm install -g sonar-report
           export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
           sonar-report \
