@@ -41,18 +41,23 @@ jobs:
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
           
+      - name: Find DC_HTML_REPORT
+        run: |
+           DC_HTML_REPORT=$(find . -type f -name "*dependency-check-report.html")
+           echo "DC_HTML_REPORT=$DC_HTML_REPORT" >> $GITHUB_ENV
+           
       - name: Upload results - SCA
         uses: actions/upload-artifact@master
         with:
            name: Dependency Check Report
-           path: ${{github.workspace}}/build/reports/dependency-check-report.html
+           path: ${{ env.DC_HTML_REPORT }}
 
       # Posts the result of the scan to DefectDojo
       - name: Send report to DefectDojo
         if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
         run: |
-          export "FILE=$(find . -type f -name "*dependency-check-report.xml")"
-          if [[ -z "$FILE" ]]; then exit 0; fi
+          export "DC_XML_REPORT=$(find . -type f -name "*dependency-check-report.xml")"
+          if [[ -z "$DC_XML_REPORT" ]]; then exit 0; fi
           curl -s https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/engagementids.json > engagementids.json
           export "ID=$(jq '."${{ github.repository }}".${{ github.ref_name }}.scaID' engagementids.json)"
           export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
@@ -63,7 +68,7 @@ jobs:
                             -F "minimum_severity=Info" \
                             -F "skip_duplicates=true" \
                             -F "close_old_findings=true" \
-                            -F "file=@build/reports/dependency-check-report.xml" \
+                            -F "file=@DC_XML_REPORT" \
                             -F "scan_date=$SCAN_DATE" \
                             -F "auto_create_context=True" \
                             -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
