@@ -61,11 +61,12 @@ jobs:
       - name: Setup Node 
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
 
       - name: Install "sonar-report"  and run it
         run: |
-          npm install -g sonar-report
+          npm cache clean --force
+          npm install -g sonar-report@3.0.10
           export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
           sonar-report \
            --sonarurl="https://sonarcloud.io" \
