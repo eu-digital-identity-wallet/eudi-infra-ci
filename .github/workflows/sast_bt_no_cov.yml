@@ -43,7 +43,7 @@ jobs:
         uses: gradle/gradle-build-action@v2.11.1
         with:
           gradle-version: wrapper
-          arguments: test sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }} -Dsonar.host.url=${{ vars.SONAR_URL }}
+          arguments: testDevDebugUnitTest sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }} -Dsonar.host.url=${{ vars.SONAR_URL }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -69,7 +69,7 @@ jobs:
           npm install -g sonar-report@3.0.10
           export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
           sonar-report \
-           --sonarurl="https://sonarcloud.io" \
+           --sonarurl="${{ vars.SONAR_URL }}" \
            --sonarorganization="${{ github.repository_owner }}" \
            --branch="${{ github.ref_name }}" \
            --sonartoken="${{ secrets.SONAR_TOKEN }}" \
