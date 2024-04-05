@@ -1,4 +1,4 @@
-name: SAST - SonarCloud (BT)
+name: SAST - SonarCloud (BT) - testDebugUnitTestCoverage task
 on:
   workflow_call:
     secrets:
