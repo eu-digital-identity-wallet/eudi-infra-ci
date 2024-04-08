@@ -1,0 +1,33 @@
+name: Legitify Analyze - niscy-eudiw GH Organization
+on:
+    workflow_dispatch:
+    schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+     - uses: actions/cache@v4
+       with:
+        path: |
+          legitify
+        key: ${{ runner.os }}-legitify-1.0.7
+     - name: Legitify Scan - CLI
+       run: |
+          if [[ -f "legitify" ]]; then
+             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format sarif --output-file legitify_niscy.sarif
+          else
+             wget https://legitify.legitsecurity.com/1.0.7/linux/amd64.tar.gz
+             tar -xzf amd64.tar.gz
+             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format sarif --output-file legitify_niscy.sarif
+          fi
+       env:
+         LEGITIFY_PAT: ${{ secrets.LEGITIFY_PAT }}
+     - name: Upload SARIF file as artifact
+       uses: actions/upload-artifact@v4
+       with:
+         name: sarif-report-legitify
+         path: legitify_niscy.sarif
+      
+       
