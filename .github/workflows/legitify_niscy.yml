@@ -24,10 +24,23 @@ jobs:
           fi
        env:
          LEGITIFY_PAT: ${{ secrets.LEGITIFY_PAT }}
-     - name: Upload SARIF file as artifact
-       uses: actions/upload-artifact@v4
-       with:
-         name: sarif-report-legitify
-         path: legitify_niscy.sarif
-      
-       
+
+     - name: Send report to DefectDojo
+       if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'))
+       run: |
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
+                            -H "Authorization: Token $DOJO_TOKEN" \
+                            -F "active=true" \
+                            -F "scan_type=SARIF" \
+                            -F "minimum_severity=High" \
+                            -F "skip_duplicates=true" \
+                            -F "close_old_findings=true" \
+                            -F "file=@legitify_niscy.sarif" \
+                            -F "scan_date=$SCAN_DATE" \
+                            -F "auto_create_context=True" \
+                            -F "product_name=eu-digital-identity-wallet/eu-digital-identity-wallet-GitHub Organization" \
+                            -F "engagement_name=GH Organization Security Scanning (Legitify) - eu-digital-identity-wallet/niscy-eudiw-GitHub Organization"
+       env:
+         DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+         DOJO_URL: ${{ secrets.DOJO_URL }}
