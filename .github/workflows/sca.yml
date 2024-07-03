@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dependency-check
-          key: dependency-check-cli-9.0.9
+          key: dependency-check-cli-10.0.0
           restore-keys: |
             dependency-check-cli-
             
@@ -45,8 +45,8 @@ jobs:
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
           else
-             wget https://github.com/jeremylong/DependencyCheck/releases/download/v9.0.9/dependency-check-9.0.9-release.zip
-             unzip dependency-check-9.0.9-release.zip
+             wget https://github.com/jeremylong/DependencyCheck/releases/download/v10.0.0/dependency-check-10.0.0-release.zip
+             unzip dependency-check-10.0.0-release.zip
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
           fi
         env:
