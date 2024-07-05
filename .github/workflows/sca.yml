@@ -43,11 +43,11 @@ jobs:
         run: |
          sudo gem install bundler-audit
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
-             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }} --noupdate
           else
              wget https://github.com/jeremylong/DependencyCheck/releases/download/v10.0.0/dependency-check-10.0.0-release.zip
              unzip dependency-check-10.0.0-release.zip
-             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }} --noupdate
           fi
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
