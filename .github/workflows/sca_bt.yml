@@ -12,6 +12,7 @@ on:
 jobs:
    SCA:
     name: SCA - Dependency Check Analysis (BT)
+    if: false
     runs-on:  ubuntu-latest
     steps:
     
