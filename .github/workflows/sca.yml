@@ -14,6 +14,8 @@ jobs:
   SCA:
    name: SCA - Dependency Check Analysis (CLI)
    runs-on: ubuntu-latest
+   env:
+     DEP_CHECK_VERSION: '10.0.0'
    steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,16 +27,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dependency-check/data
-          key: dependency-check-data-${{ runner.os }}
+          key: dependency-check-data-${{ runner.os }}-${{ env.DEP_CHECK_VERSION }}
           restore-keys: |
-            dependency-check-data-
+            dependency-check-data-${{ runner.os }}-${{ env.TOOL_VERSION }}-
+            dependency-check-data-${{ runner.os }}-
             
     # Caches dependency-check's directory to avoid downloading the tool every time
       - name: Cache Dependency Check CLI
         uses: actions/cache@v4
         with:
           path: dependency-check
-          key: dependency-check-cli-10.0.0
+          key: dependency-check-cli-${{ env.DEP_CHECK_VERSION }}
           restore-keys: |
             dependency-check-cli-
             
@@ -45,8 +48,8 @@ jobs:
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }} --noupdate
           else
-             wget https://github.com/jeremylong/DependencyCheck/releases/download/v10.0.0/dependency-check-10.0.0-release.zip
-             unzip dependency-check-10.0.0-release.zip
+             wget https://github.com/jeremylong/DependencyCheck/releases/download/v${{ env.DEP_CHECK_VERSION }}/dependency-check-${{ env.DEP_CHECK_VERSION }}-release.zip
+             unzip dependency-check-${{ env.DEP_CHECK_VERSION }}-release.zip
              bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }} --noupdate
           fi
         env:
