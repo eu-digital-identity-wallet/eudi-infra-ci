@@ -15,7 +15,7 @@ jobs:
    name: SCA - Dependency Check Analysis (CLI)
    runs-on: ubuntu-latest
    env:
-     DEP_CHECK_VERSION: '10.0.0'
+     DEP_CHECK_VERSION: '10.0.2'
    steps:
       - name: Checkout code
         uses: actions/checkout@v4
