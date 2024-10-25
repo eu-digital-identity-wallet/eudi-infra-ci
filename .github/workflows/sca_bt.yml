@@ -25,7 +25,9 @@ jobs:
           java-version: '17'
           
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: Cache Dependency-Check Data
         uses: actions/cache@v4
         with:
@@ -35,10 +37,7 @@ jobs:
           restore-keys: ${{ runner.os }}-dependency-check
           
       - name: Build with Gradle Wrapper & Run Dependency-Check
-        uses: gradle/gradle-build-action@v2.11.1
-        with:
-          gradle-version: wrapper
-          arguments: dependencyCheckAnalyze --info
+        run: ./gradlew dependencyCheckAnalyze --info
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
           

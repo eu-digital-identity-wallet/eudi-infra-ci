@@ -35,25 +35,21 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/actions/wrapper-validation@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: setup projectkey
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
       - name: SonarCloud Scan - Gradle Wrapper - Push or Workflow Dispatch Analysis
         if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
-        uses: gradle/gradle-build-action@v2.11.1
-        with:
-          gradle-version: wrapper
-          arguments: test jacocoTestReport sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }}
+        run: ./gradlew test jacocoTestReport sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: SonarCloud Scan - Gradle Wrapper - Pull Request Analysis
         if: (github.event_name == 'pull_request_target')
-        uses: gradle/gradle-build-action@v2.11.1
-        with:
-          gradle-version: wrapper
-          arguments: sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }} -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+        run: ./gradlew sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }} -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
