@@ -16,11 +16,11 @@ jobs:
      - name: Legitify Scan - CLI
        run: |
           if [[ -f "legitify" ]]; then
-             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format sarif --output-file legitify_niscy.sarif
+             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format json --output-file legitify_niscy.json
           else
              wget https://legitify.legitsecurity.com/1.0.7/linux/amd64.tar.gz
              tar -xzf amd64.tar.gz
-             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format sarif --output-file legitify_niscy.sarif
+             ./legitify analyze --token=${{ secrets.LEGITIFY_PAT }} --org niscy-eudiw --output-format json --output-file legitify_niscy.json
           fi
        env:
          LEGITIFY_PAT: ${{ secrets.LEGITIFY_PAT }}
@@ -32,11 +32,11 @@ jobs:
           curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
                             -H "Authorization: Token $DOJO_TOKEN" \
                             -F "active=true" \
-                            -F "scan_type=SARIF" \
+                            -F "scan_type=Legitify Scan" \
                             -F "minimum_severity=High" \
                             -F "skip_duplicates=true" \
                             -F "close_old_findings=true" \
-                            -F "file=@legitify_niscy.sarif" \
+                            -F "file=@legitify_niscy.json" \
                             -F "scan_date=$SCAN_DATE" \
                             -F "auto_create_context=True" \
                             -F "product_name=eu-digital-identity-wallet/niscy-eudiw-GitHub Organization" \
