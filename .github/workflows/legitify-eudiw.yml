@@ -32,7 +32,7 @@ jobs:
           curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
                             -H "Authorization: Token $DOJO_TOKEN" \
                             -F "active=true" \
-                            -F "scan_type=legitify" \
+                            -F "scan_type=Legitify Scan" \
                             -F "minimum_severity=High" \
                             -F "skip_duplicates=true" \
                             -F "close_old_findings=true" \
