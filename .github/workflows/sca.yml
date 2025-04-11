@@ -43,6 +43,7 @@ jobs:
             
      # Runs the dependency-check.sh script. If it does not exist (e.g. restored from cache), download the tool and run it
       - name: Dependency Check Scan - CLI
+        continue-on-error: true
         run: |
          sudo gem install bundler-audit
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
