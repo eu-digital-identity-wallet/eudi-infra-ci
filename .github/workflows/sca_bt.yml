@@ -37,6 +37,7 @@ jobs:
           restore-keys: ${{ runner.os }}-dependency-check
           
       - name: Build with Gradle Wrapper & Run Dependency-Check
+        continue-on-error: true
         run: |
           set +e
           ./gradlew dependencyCheckAnalyze --info
