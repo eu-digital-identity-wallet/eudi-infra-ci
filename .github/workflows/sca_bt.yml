@@ -37,8 +37,13 @@ jobs:
           restore-keys: ${{ runner.os }}-dependency-check
           
       - name: Build with Gradle Wrapper & Run Dependency-Check
-        continue-on-error: true
-        run: ./gradlew dependencyCheckAnalyze --info
+        run: |
+          ./gradlew dependencyCheckAnalyze --info
+          exit_code=$?
+          if [[ $exit_code -ne 0 ]]; then
+            echo "Dependency Check failed with code $exit_code — marking as neutral."
+            exit 78
+          fi
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
           
