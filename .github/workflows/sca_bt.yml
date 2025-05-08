@@ -35,6 +35,11 @@ jobs:
             ~/.gradle/dependency-check-data
           key: ${{ runner.os }}-dependency-check-${{ hashFiles('**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-dependency-check
+
+      - name: Write Dependency-Check Properties
+        run: |
+          mkdir -p .dependency-check
+          echo "nvd.api.delay=3500" > .dependency-check/dependency-check.properties
           
       - name: Build with Gradle Wrapper & Run Dependency-Check
         continue-on-error: true
@@ -43,14 +48,13 @@ jobs:
           set +e
           ./gradlew dependencyCheckAnalyze --info
           exit_code=$?
-          echo "exit_code=$exit_code" >> $GITHUB_ENV
-          echo "::set-output name=exit_code::$exit_code"  # Set the exit code as output for subsequent steps
           if [[ $exit_code -ne 0 ]]; then
             echo "Dependency Check failed with code $exit_code — marking as neutral."
             exit 78
           fi
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          dependencyCheck.properties: .dependency-check/dependency-check.properties
           
       - name: Find DC_HTML_REPORT
         if: steps.depcheck.outputs.exit_code == '0'
