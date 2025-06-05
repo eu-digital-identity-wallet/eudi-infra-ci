@@ -43,7 +43,7 @@ jobs:
       - name: SonarCloud Scan - Gradle Wrapper - Push or Workflow Dispatch Analysis
         if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
         run: |
-          if ./gradlew tasks --all | grep -q "^testDevDebugUnitTest"; then
+          if ./gradlew tasks --all | grep -q testDevDebugUnitTest; then
             echo "Running testDevDebugUnitTest"
             ./gradlew testDevDebugUnitTest sonar --info --full-stacktrace \
               -Dsonar.organization=${{ github.repository_owner }} \
