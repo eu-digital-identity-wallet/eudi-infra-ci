@@ -67,9 +67,9 @@ jobs:
             -Dsonar.language=kotlin
             -Dsonar.sources=.
             -Dsonar.tests=.
-            -Dsonar.exclusions=.run/**
-            -Dsonar.test.exclusions=.run/**
-            -Dsonar.java.binaries=.
+            -Dsonar.java.binaries=**/build/intermediates/javac/**/classes
+            -Dsonar.exclusions=.github/**,.run/**,**/build/**,**/*.gradle.kts
+            -Dsonar.test.exclusions=.github/**,.run/**,**/build/**
             -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: sonarsource/sonarqube-scan-action@v5.1
@@ -86,9 +86,9 @@ jobs:
             -Dsonar.language=kotlin
             -Dsonar.sources=.
             -Dsonar.tests=.
-            -Dsonar.exclusions=.run/**
-            -Dsonar.test.exclusions=.run/**
-            -Dsonar.java.binaries=.
+            -Dsonar.java.binaries=**/build/intermediates/javac/**/classes
+            -Dsonar.exclusions=.github/**,.run/**,**/build/**,**/*.gradle.kts
+            -Dsonar.test.exclusions=.github/**,.run/**,**/build/**
             -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: actions/setup-node@v4
