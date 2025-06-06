@@ -67,6 +67,8 @@ jobs:
             -Dsonar.language=kotlin
             -Dsonar.sources=.
             -Dsonar.tests=.
+            -Dsonar.exclusions=.run/**
+            -Dsonar.test.exclusions=.run/**
             -Dsonar.java.binaries=.
             -Dsonar.scanner.skipJreProvisioning=true
 
@@ -84,6 +86,8 @@ jobs:
             -Dsonar.language=kotlin
             -Dsonar.sources=.
             -Dsonar.tests=.
+            -Dsonar.exclusions=.run/**
+            -Dsonar.test.exclusions=.run/**
             -Dsonar.java.binaries=.
             -Dsonar.scanner.skipJreProvisioning=true
 
