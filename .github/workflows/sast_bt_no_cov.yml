@@ -1,4 +1,5 @@
-name: SAST - SonarCloud (BT) - No Coverage
+name: SAST - SonarCloud (Android)
+
 on:
   workflow_call:
     secrets:
@@ -6,106 +7,117 @@ on:
         required: false
       SONAR_TOKEN:
         required: true
-      DOJO_TOKEN: 
+      DOJO_TOKEN:
         required: false
-      DOJO_URL: 
+      DOJO_URL:
         required: false
-        
+
 jobs:
-  check_secret:
+  check-secret:
     name: Check secret presence
     runs-on: ubuntu-latest
     steps:
-    - run: if [[ -z "$SONAR_TOKEN" ]]; then exit 1; else echo "Secret exists. The workflow will be continued"; fi
-    env:
-       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - run: if [[ -z "$SONAR_TOKEN" ]]; then exit 1; else echo "SONAR_TOKEN exists."; fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  SAST:
-    name: SAST - SonarCloud Analysis (BT)
-    needs: check_secret
-    runs-on:  ubuntu-latest
+  analysis:
+    name: SonarCloud Analysis
+    needs: check-secret
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+      DOJO_URL: ${{ secrets.DOJO_URL }}
     steps:
-      - name: Checkout project sources
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 #Shallow clones should be disabled for a better relevancy of SonarCloud analysis
-         #ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v4
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: setup projectkey
-        run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
-      - name: SonarCloud Scan - Gradle Wrapper - Push or Workflow Dispatch Analysis
-        if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set project metadata
+        run: |
+          echo "PROJECT_KEY=${{ github.repository_owner }}_$(basename ${{ github.repository }})" >> $GITHUB_ENV
+          echo "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Run Unit Tests
         run: |
           if ./gradlew tasks --all | grep -q testDevDebugUnitTest; then
-            echo "Running testDevDebugUnitTest"
-            ./gradlew testDevDebugUnitTest sonar --info --full-stacktrace \
-              -Dsonar.organization=${{ github.repository_owner }} \
-              -Dsonar.projectKey=${{ env.PROJECTKEY }} \
-              -Dsonar.host.url=${{ vars.SONAR_URL }}
+            ./gradlew testDevDebugUnitTest
           else
-            echo "Fallback: Running testDebugUnitTest"
-            ./gradlew testDebugUnitTest sonar --info --full-stacktrace \
-              -Dsonar.organization=${{ github.repository_owner }} \
-              -Dsonar.projectKey=${{ env.PROJECTKEY }} \
-              -Dsonar.host.url=${{ vars.SONAR_URL }}
+            ./gradlew testDebugUnitTest
           fi
+      - name: Generate sonar.sources and sonar.tests dynamically
+        run: |
+          echo "SONAR_SOURCES=$(find . -type d -path "*/src/main" | paste -sd ',' -)" >> $GITHUB_ENV
 
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - uses: sonarsource/sonarqube-scan-action@v5.1
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        with:
+          projectBaseDir: ${{ github.workspace }}
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECT_KEY }}
+            -Dsonar.androidVariant=devDebug
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.language=kotlin
+            -Dsonar.sources=${{ env.SONAR_SOURCES }}
+            -Dsonar.java.binaries=build/classes/kotlin/
+            -Dsonar.kotlin.binaries=build/classes/kotlin/
+            -Dsonar.scanner.skipJreProvisioning=true
 
-      - name: SonarCloud Scan - Gradle Wrapper - Pull Request Analysis
-        if: (github.event_name == 'pull_request_target')
-        run: ./gradlew sonar --info --full-stacktrace -Dsonar.organization=${{ github.repository_owner }} -Dsonar.projectKey=${{ env.PROJECTKEY }} -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} -Dsonar.host.url=${{ vars.SONAR_URL }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    
-      - name: Setup Node 
-        uses: actions/setup-node@v4
+      - uses: sonarsource/sonarqube-scan-action@v5.1
+        if: github.event_name == 'pull_request_target'
+        with:
+          projectBaseDir: ${{ github.workspace }}
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECT_KEY }}
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
+            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.language=kotlin
+            -Dsonar.sources=${{ env.SONAR_SOURCES }}
+            -Dsonar.java.binaries=build/classes/kotlin/
+            -Dsonar.kotlin.binaries=build/classes/kotlin/
+            -Dsonar.scanner.skipJreProvisioning=true
+
+      - uses: actions/setup-node@v4
+        if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main'
         with:
           node-version: 18
 
-      - name: Install "sonar-report"  and run it
-        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main')
+      - name: Generate and Upload Sonar Report to DefectDojo
+        if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: |
           npm cache clean --force
           npm install -g sonar-report@3.0.10
-          export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
           sonar-report \
-           --sonarurl="${{ vars.SONAR_URL }}" \
-           --sonarorganization="${{ github.repository_owner }}" \
-           --branch="${{ github.ref_name }}" \
-           --sonartoken="${{ secrets.SONAR_TOKEN }}" \
-           --output sonarreport.html \
-           --application="$PROJECTKEY" \
-           --sonarcomponent="$PROJECTKEY"
-        env:
-         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            --sonarurl="https://sonarcloud.io" \
+            --sonarorganization="${{ github.repository_owner }}" \
+            --branch="${{ github.ref_name }}" \
+            --sonartoken="${{ secrets.SONAR_TOKEN }}" \
+            --output sonarreport.html \
+            --application="${{ env.PROJECT_KEY }}" \
+            --sonarcomponent="${{ env.PROJECT_KEY }}"
 
-      - name: Send report to DefectDojo
-        if: (github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
-        run: |
-          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
           curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
-                            -H "Authorization: Token $DOJO_TOKEN" \
-                            -F "active=true" \
-                            -F "scan_type=SonarQube Scan detailed" \
-                            -F "minimum_severity=Info" \
-                            -F "skip_duplicates=true" \
-                            -F "close_old_findings=true" \
-                            -F "file=@sonarreport.html" \
-                            -F "scan_date=$SCAN_DATE" \
-                            -F "auto_create_context=True" \
-                            -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
-                            -F "engagement_name=Static Application Security Testing - ${{ github.repository }}-${{ github.ref_name }}"
-        env:
-         DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
-         DOJO_URL: ${{ secrets.DOJO_URL }}
+            -H "Authorization: Token $DOJO_TOKEN" \
+            -F "active=true" \
+            -F "scan_type=SonarQube Scan detailed" \
+            -F "minimum_severity=Info" \
+            -F "skip_duplicates=true" \
+            -F "close_old_findings=true" \
+            -F "file=@sonarreport.html" \
+            -F "scan_date=${{ env.SCAN_DATE }}" \
+            -F "auto_create_context=True" \
+            -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
+            -F "engagement_name=Static Application Security Testing - ${{ github.repository }}-${{ github.ref_name }}"
