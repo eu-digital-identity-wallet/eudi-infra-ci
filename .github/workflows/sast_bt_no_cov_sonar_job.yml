@@ -66,7 +66,7 @@ jobs:
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECT_KEY }}
             -Dsonar.androidVariant=devDebug
-            -Dsonar.host.url=${{ vars.SONAR_URL }}
+            -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.language=kotlin
             -Dsonar.sources=${{ env.SONAR_SOURCES }}
             -Dsonar.java.binaries=build/classes/kotlin/
@@ -83,7 +83,7 @@ jobs:
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-            -Dsonar.host.url=${{ vars.SONAR_URL }}
+            -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.language=kotlin
             -Dsonar.sources=${{ env.SONAR_SOURCES }}
             -Dsonar.java.binaries=build/classes/kotlin/
