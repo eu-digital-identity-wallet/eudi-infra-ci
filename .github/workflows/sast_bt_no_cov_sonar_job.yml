@@ -65,8 +65,8 @@ jobs:
             -Dsonar.androidVariant=devDebug
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.language=kotlin
-            -Dsonar.sources=**/src/main
-            -Dsonar.tests=**/src/test
+            -Dsonar.sources=src/main
+            -Dsonar.tests=src/test
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
             -Dsonar.scanner.skipJreProvisioning=true
@@ -83,8 +83,8 @@ jobs:
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.language=kotlin
-            -Dsonar.sources=**/src/main
-            -Dsonar.tests=**/src/test
+            -Dsonar.sources=src/main
+            -Dsonar.tests=src/test
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
             -Dsonar.scanner.skipJreProvisioning=true
