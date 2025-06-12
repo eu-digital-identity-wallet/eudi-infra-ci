@@ -37,9 +37,17 @@ jobs:
       - name: Build Maven project
         run: mvn clean verify -DskipTests
 
+      - name: Debug class folders (optional, remove when stable)
+        run: find . -type d -path "*/target/classes"
+
       - name: Generate sonar.java.binaries for multi-module
         run: |
           BINARIES=$(find . -type d -path "*/target/classes" | paste -sd "," -)
+          if [ -z "$BINARIES" ]; then
+            echo "❌ No compiled classes found. mvn verify may have failed or ran in the wrong directory."
+            exit 1
+          fi
+          echo "✅ Found binaries: $BINARIES"
           echo "SONAR_BINARIES=$BINARIES" >> $GITHUB_ENV
 
       - name: SonarCloud Scan - Push or Workflow Dispatch
