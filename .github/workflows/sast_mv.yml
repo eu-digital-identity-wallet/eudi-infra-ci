@@ -26,10 +26,10 @@ jobs:
     needs: check_secret
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout action
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: Setup project key
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
@@ -37,24 +37,31 @@ jobs:
       - name: Build Maven project
         run: mvn clean verify -DskipTests
 
-      - name: SonarCloud Scan - GH Action - Push or Workflow Dispatch
-        if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
+      - name: Generate sonar.java.binaries for multi-module
+        run: |
+          BINARIES=$(find . -type d -path "*/target/classes" | paste -sd "," -)
+          echo "SONAR_BINARIES=$BINARIES" >> $GITHUB_ENV
+
+      - name: SonarCloud Scan - Push or Workflow Dispatch
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.java.binaries=${{ env.SONAR_BINARIES }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: SonarCloud Scan - GH Action - Pull Request Analysis
+      - name: SonarCloud Scan - Pull Request Analysis
         if: (github.event_name == 'pull_request_target')
         uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.java.binaries=${{ env.SONAR_BINARIES }}
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
@@ -62,7 +69,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Setup Node 
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
