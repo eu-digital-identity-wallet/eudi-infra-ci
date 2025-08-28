@@ -47,6 +47,9 @@ jobs:
           echo "PROJECT_KEY=${{ github.repository_owner }}_$(basename ${{ github.repository }})" >> $GITHUB_ENV
           echo "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')" >> $GITHUB_ENV
 
+      - name: Clean Gradle build
+        run: ./gradlew clean
+
       - name: Run Unit Tests
         run: |
           if ./gradlew tasks --all | grep -q testDevDebugUnitTest; then
