@@ -35,7 +35,7 @@ jobs:
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
       - name: SonarCloud Scan - GH Action - Push or Workflow Dispatch
         if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
-        uses: SonarSource/sonarqube-scan-action@5.3.1
+        uses: SonarSource/sonarqube-scan-action@v5.3.1
         with:
             args: >
                 -Dsonar.organization=${{ github.repository_owner }}
@@ -45,7 +45,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: SonarCloud Scan - GH Action - Pull Request Analysis
         if: (github.event_name == 'pull_request_target')
-        uses: SonarSource/sonarqube-scan-action@5.3.1
+        uses: SonarSource/sonarqube-scan-action@v5.3.1
         with:
             args: >
                 -Dsonar.organization=${{ github.repository_owner }}
