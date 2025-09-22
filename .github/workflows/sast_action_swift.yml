@@ -7,21 +7,15 @@ on:
         required: false
       SONAR_TOKEN:
         required: true
-      DOJO_TOKEN:
+      DOJO_TOKEN: 
         required: false
-      DOJO_URL:
+      DOJO_URL: 
         required: false
-
-permissions:
-  contents: read
-  checks: read
-  pull-requests: read
 
 jobs:
   SAST:
     name: SAST - SonarCloud analysis (Swift)
     runs-on: macos-latest
-    timeout-minutes: 120
 
     steps:
       - name: Checkout source
@@ -30,66 +24,89 @@ jobs:
           fetch-depth: 0
 
       - name: Setup project key
-        run: echo "PROJECTKEY=${{ github.repository_owner }}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
+        run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
-      - name: Ensure jq
-        run: |
-          set -euo pipefail
-          if ! command -v jq >/dev/null 2>&1; then
-            brew update && brew install jq
-          fi
-
-      - name: Detect Xcode scheme and project/workspace
+      # -------- DETECT PROJECT TYPE --------
+      - name: Detect project type
         id: detect
         run: |
           set -euo pipefail
-          xcodebuild -list -json > xcodebuild.json
-          SCHEME=$(jq -r 'if .project != null and (.project.schemes|length>0) then .project.schemes[0] elif .workspace != null and (.workspace.schemes|length>0) then .workspace.schemes[0] else empty end' xcodebuild.json || true)
-          [[ -n "$SCHEME" ]] || exit 1
-          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          # Look for Xcode workspace/project
+          WORKSPACE=$(find . -name "*.xcworkspace" | head -n 1 || true)
+          PROJECT=$(find . -name "*.xcodeproj" | head -n 1 || true)
+          PACKAGE=$(find . -name "Package.swift" | head -n 1 || true)
 
-          if ls *.xcworkspace 1>/dev/null 2>&1; then
-            WORKSPACE=$(ls *.xcworkspace | head -n 1)
-            echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
-          elif ls *.xcodeproj 1>/dev/null 2>&1; then
-            PROJECT=$(ls *.xcodeproj | head -n 1)
-            echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          echo "Detected workspace: $WORKSPACE"
+          echo "Detected project: $PROJECT"
+          echo "Detected package: $PACKAGE"
+
+          if [[ -n "$WORKSPACE" || -n "$PROJECT" ]]; then
+            PROJECT_TYPE="xcode"
+            if [[ -n "$WORKSPACE" ]]; then
+              echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
+            else
+              echo "project=$PROJECT" >> $GITHUB_OUTPUT
+            fi
+            # detect first scheme
+            if [[ -n "$WORKSPACE" ]]; then
+              SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | jq -r '.workspace.schemes[0]')
+            else
+              SCHEME=$(xcodebuild -list -json -project "$PROJECT" | jq -r '.project.schemes[0]')
+            fi
+            [[ -n "$SCHEME" ]] || { echo "Error: no scheme found"; exit 1; }
+            echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          elif [[ -n "$PACKAGE" ]]; then
+            PROJECT_TYPE="swiftpm"
           else
+            echo "Error: no Xcode project/workspace or Package.swift found"
             exit 1
           fi
 
-      - name: Run Swift unit tests with coverage
+          echo "project_type=$PROJECT_TYPE" >> $GITHUB_OUTPUT
+
+      # -------- RUN TESTS & GENERATE COVERAGE --------
+      - name: Run tests with coverage
         run: |
           set -euo pipefail
-          DEST_ID=$(xcrun simctl list devices available | grep -m1 "iPhone" | awk -F '[()]' '{print $2}' | tr -d '[:space:]' || true)
-          [[ -n "$DEST_ID" ]] || exit 1
+          if [[ "${{ steps.detect.outputs.project_type }}" == "xcode" ]]; then
+            DEST=$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | awk -F'[()]' '{print $2}')
+            if [[ -n "${{ steps.detect.outputs.workspace }}" ]]; then
+              xcodebuild \
+                -scheme "${{ steps.detect.outputs.scheme }}" \
+                -workspace "${{ steps.detect.outputs.workspace }}" \
+                -sdk iphonesimulator \
+                -destination "platform=iOS Simulator,id=$DEST" \
+                -enableCodeCoverage YES \
+                clean test
+            else
+              xcodebuild \
+                -scheme "${{ steps.detect.outputs.scheme }}" \
+                -project "${{ steps.detect.outputs.project }}" \
+                -sdk iphonesimulator \
+                -destination "platform=iOS Simulator,id=$DEST" \
+                -enableCodeCoverage YES \
+                clean test
+            fi
 
-          if [[ -n "${{ steps.detect.outputs.workspace }}" ]]; then
-            xcodebuild -scheme "${{ steps.detect.outputs.scheme }}" -workspace "${{ steps.detect.outputs.workspace }}" -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEST_ID" -enableCodeCoverage YES clean test
+            # Convert xcode coverage to Sonar format
+            curl -sSL https://raw.githubusercontent.com/SonarSource/sonar-scanning-examples/1dd2b1b4736cc3be4d714770d469ed7c59deec1b/swift-coverage/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+            chmod +x xccov-to-sonarqube-generic.sh
+            RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.xcresult" | head -n 1)
+            ./xccov-to-sonarqube-generic.sh "$RESULT_BUNDLE" > sonar-generic-coverage.xml
           else
-            xcodebuild -scheme "${{ steps.detect.outputs.scheme }}" -project "${{ steps.detect.outputs.project }}" -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEST_ID" -enableCodeCoverage YES clean test
+            # Swift Package
+            swift test --enable-code-coverage
+            # Generate llvm-cov lcov report
+            TEST_TARGET=$(swift package show-dependencies --format json | jq -r '.products[0].name')
+            PROFDATA=$(find .build -name "*.profdata" | head -n 1)
+            EXECUTABLE=$(find .build/debug -name "*Tests.xctest" | head -n 1)
+            xcrun llvm-cov export -instr-profile="$PROFDATA" "$EXECUTABLE" > sonar-generic-coverage.xml
           fi
 
-      - name: Download Sonar Swift coverage converter
-        run: |
-          set -euo pipefail
-          CONVERTER_URL="https://raw.githubusercontent.com/SonarSource/sonar-scanning-examples/1dd2b1b4736cc3be4d714770d469ed7c59deec1b/swift-coverage/xccov-to-sonarqube-generic.sh"
-          curl --fail --silent --show-error -L "$CONVERTER_URL" -o xccov-to-sonarqube-generic.sh
-          chmod +x xccov-to-sonarqube-generic.sh
-          EXPECTED_SHA256="b6e63f222e7b51ff2d70f8fbe48b8f771d4d95b6f7b1f7f9c3e44bda1b5e7b5f"
-          ACTUAL_SHA256=$(shasum -a 256 xccov-to-sonarqube-generic.sh | awk '{print $1}')
-          [[ "$ACTUAL_SHA256" == "$EXPECTED_SHA256" ]] || exit 1
-
-      - name: Convert coverage to Sonar format
-        run: |
-          set -euo pipefail
-          RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.xcresult" -print | head -n 1 || true)
-          [[ -n "$RESULT_BUNDLE" ]] || exit 1
-          ./xccov-to-sonarqube-generic.sh "$RESULT_BUNDLE" > sonar-generic-coverage.xml
-
-      - name: SonarCloud Scan - Push / Dispatch
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        uses: SonarSource/sonarqube-scan-action@v1
+      # -------- SONARCLOUD SCAN --------
+      - name: SonarCloud Scan - Push or Workflow Dispatch
+        if: (github.event_name == 'push'|| github.event_name == 'workflow_dispatch')
+        uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
@@ -99,9 +116,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: SonarCloud Scan - Pull Request
-        if: github.event_name == 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@v6.0.0
+      - name: SonarCloud Scan - Pull Request Analysis
+        if: (github.event_name == 'pull_request_target')
+        uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
