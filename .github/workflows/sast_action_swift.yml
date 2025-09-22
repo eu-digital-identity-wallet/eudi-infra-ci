@@ -1,0 +1,115 @@
+name: SAST - SonarCloud (Swift + Coverage)
+
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: false
+      SONAR_TOKEN:
+        required: true
+      DOJO_TOKEN:
+        required: false
+      DOJO_URL:
+        required: false
+
+permissions:
+  contents: read
+  checks: read
+  pull-requests: read
+
+jobs:
+  SAST:
+    name: SAST - SonarCloud analysis (Swift)
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup project key
+        run: echo "PROJECTKEY=${{ github.repository_owner }}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
+
+      - name: Ensure jq
+        run: |
+          set -euo pipefail
+          if ! command -v jq >/dev/null 2>&1; then
+            brew update && brew install jq
+          fi
+
+      - name: Detect Xcode scheme and project/workspace
+        id: detect
+        run: |
+          set -euo pipefail
+          xcodebuild -list -json > xcodebuild.json
+          SCHEME=$(jq -r 'if .project != null and (.project.schemes|length>0) then .project.schemes[0] elif .workspace != null and (.workspace.schemes|length>0) then .workspace.schemes[0] else empty end' xcodebuild.json || true)
+          [[ -n "$SCHEME" ]] || exit 1
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+
+          if ls *.xcworkspace 1>/dev/null 2>&1; then
+            WORKSPACE=$(ls *.xcworkspace | head -n 1)
+            echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
+          elif ls *.xcodeproj 1>/dev/null 2>&1; then
+            PROJECT=$(ls *.xcodeproj | head -n 1)
+            echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          else
+            exit 1
+          fi
+
+      - name: Run Swift unit tests with coverage
+        run: |
+          set -euo pipefail
+          DEST_ID=$(xcrun simctl list devices available | grep -m1 "iPhone" | awk -F '[()]' '{print $2}' | tr -d '[:space:]' || true)
+          [[ -n "$DEST_ID" ]] || exit 1
+
+          if [[ -n "${{ steps.detect.outputs.workspace }}" ]]; then
+            xcodebuild -scheme "${{ steps.detect.outputs.scheme }}" -workspace "${{ steps.detect.outputs.workspace }}" -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEST_ID" -enableCodeCoverage YES clean test
+          else
+            xcodebuild -scheme "${{ steps.detect.outputs.scheme }}" -project "${{ steps.detect.outputs.project }}" -sdk iphonesimulator -destination "platform=iOS Simulator,id=$DEST_ID" -enableCodeCoverage YES clean test
+          fi
+
+      - name: Download Sonar Swift coverage converter
+        run: |
+          set -euo pipefail
+          CONVERTER_URL="https://raw.githubusercontent.com/SonarSource/sonar-scanning-examples/1dd2b1b4736cc3be4d714770d469ed7c59deec1b/swift-coverage/xccov-to-sonarqube-generic.sh"
+          curl --fail --silent --show-error -L "$CONVERTER_URL" -o xccov-to-sonarqube-generic.sh
+          chmod +x xccov-to-sonarqube-generic.sh
+          EXPECTED_SHA256="b6e63f222e7b51ff2d70f8fbe48b8f771d4d95b6f7b1f7f9c3e44bda1b5e7b5f"
+          ACTUAL_SHA256=$(shasum -a 256 xccov-to-sonarqube-generic.sh | awk '{print $1}')
+          [[ "$ACTUAL_SHA256" == "$EXPECTED_SHA256" ]] || exit 1
+
+      - name: Convert coverage to Sonar format
+        run: |
+          set -euo pipefail
+          RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.xcresult" -print | head -n 1 || true)
+          [[ -n "$RESULT_BUNDLE" ]] || exit 1
+          ./xccov-to-sonarqube-generic.sh "$RESULT_BUNDLE" > sonar-generic-coverage.xml
+
+      - name: SonarCloud Scan - Push / Dispatch
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: SonarSource/sonarqube-scan-action@v1
+        with:
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.coverageReportPaths=sonar-generic-coverage.xml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarCloud Scan - Pull Request
+        if: github.event_name == 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@v6.0.0
+        with:
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.coverageReportPaths=sonar-generic-coverage.xml
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
+            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
