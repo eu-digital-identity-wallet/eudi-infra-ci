@@ -89,7 +89,7 @@ jobs:
             fi
 
             # Convert xcode coverage to Sonar format
-            curl -sSL https://raw.githubusercontent.com/SonarSource/sonar-scanning-examples/main/swift-coverage/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+            curl -sSL https://raw.githubusercontent.com/SonarSource/sonar-scanning-examples/master/swift-coverage/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
             chmod +x xccov-to-sonarqube-generic.sh
 
             RESULT_BUNDLE=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "*.xcresult" | head -n 1)
