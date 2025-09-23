@@ -79,10 +79,14 @@ jobs:
           set -euo pipefail
           TYPE="${{ steps.detect.outputs.type }}"
           if [ "$TYPE" = "Xcode" ]; then
-            bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+            if [ -d "./test_result" ]; then
+              bash xccov-to-sonarqube-generic.sh ./test_result > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+            else
+              echo '<coverage/>' > sonar-coverage.xml
+            fi
           elif [ "$TYPE" = "SwiftPackage" ]; then
             PROFDATA=$(find . -name "*.profdata" | head -n1)
-            EXECUTABLES=$(find .build/debug -type f -perm +111)
+            EXECUTABLES=$(find .build/debug -type f -perm -111)
             if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
               llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
                 | lcov-to-sonarxml -o sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
@@ -91,10 +95,11 @@ jobs:
             fi
           else
             echo '<coverage/>' > sonar-coverage.xml
+          fi
 
       - name: SonarCloud Scan - Push/Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: sonarsource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
@@ -106,7 +111,7 @@ jobs:
 
       - name: SonarCloud Scan - Pull Request
         if: github.event_name == 'pull_request_target'
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: sonarsource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
