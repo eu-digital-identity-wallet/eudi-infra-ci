@@ -17,14 +17,17 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # Checkout
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Setup project key
       - name: Setup project key
         run: echo "PROJECTKEY=${{ github.repository_owner }}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
+      # Detect build type
       - name: Detect build type
         id: detect
         run: |
@@ -45,8 +48,8 @@ jobs:
             echo "type=SwiftPackage" >> $GITHUB_OUTPUT
           else
             echo "type=None" >> $GITHUB_OUTPUT
-          fi
 
+      # Run tests with coverage
       - name: Run tests with coverage
         run: |
           set -euo pipefail
@@ -74,36 +77,38 @@ jobs:
             swift test --enable-code-coverage
           fi
 
+      # Convert coverage to Sonar format
       - name: Convert coverage to Sonar format
         run: |
           set -euo pipefail
+          mkdir -p coverage_raw
           TYPE="${{ steps.detect.outputs.type }}"
+          
           if [ "$TYPE" = "Xcode" ]; then
-            bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+            # Make sure your script is fetched if not already present
+            curl -sSL -o xccov-to-sonarqube-generic.sh https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh
+            chmod +x xccov-to-sonarqube-generic.sh
+            bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
           elif [ "$TYPE" = "SwiftPackage" ]; then
-            PROFDATA=$(find . -name "*.profdata" | head -n1)
+            PROFDATA=$(find .build/debug -name "*.profdata" | head -n1)
             EXECUTABLES=$(find .build/debug -type f -perm +111)
             if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
               llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
-                | lcov-to-sonarxml -o sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+                | lcov-to-sonarxml -o coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
             else
-              echo '<coverage/>' > sonar-coverage.xml
-            fi
+              echo "<coverage/>" > coverage_raw/sonar-coverage.xml
           else
-            echo '<coverage/>' > sonar-coverage.xml
-          fi
+            echo "<coverage/>" > coverage_raw/sonar-coverage.xml
 
-      - name: Save raw coverage artifact
-        run: |
-          mkdir -p coverage_raw
-          cp sonar-coverage.xml coverage_raw/
-
+      # Upload raw coverage for inspection
       - name: Upload raw coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-raw
           path: coverage_raw/
+          if-no-files-found: warn
 
+      # SonarCloud Scan - Push/Dispatch
       - name: SonarCloud Scan - Push/Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: SonarSource/sonarqube-scan-action@master
@@ -111,11 +116,12 @@ jobs:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
-            -Dsonar.coverageReportPaths=sonar-coverage.xml
+            -Dsonar.coverageReportPaths=coverage_raw/sonar-coverage.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      # SonarCloud Scan - Pull Request
       - name: SonarCloud Scan - Pull Request
         if: github.event_name == 'pull_request_target'
         uses: SonarSource/sonarqube-scan-action@master
@@ -123,7 +129,7 @@ jobs:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
-            -Dsonar.coverageReportPaths=sonar-coverage.xml
+            -Dsonar.coverageReportPaths=coverage_raw/sonar-coverage.xml
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
