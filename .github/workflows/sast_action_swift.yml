@@ -74,30 +74,51 @@ jobs:
             swift test --enable-code-coverage
           fi
 
-      - name: Download coverage conversion script (Xcode only)
-        if: ${{ steps.detect.outputs.type == 'Xcode' }}
+      - name: Fetch coverage conversion script
         run: |
-          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
-          chmod +x xccov-to-sonarqube-generic.sh
+          curl -fSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh \
+               -o ./xccov-to-sonarqube-generic.sh
+          chmod +x ./xccov-to-sonarqube-generic.sh
 
-      - name: Convert coverage to Sonar format
+      - name: Convert coverage to Sonar format and upload raw coverage
         run: |
           set -euo pipefail
           TYPE="${{ steps.detect.outputs.type }}"
+
+          mkdir -p coverage_raw
+
           if [ "$TYPE" = "Xcode" ]; then
+            echo "Copying raw .xcresult bundle for artifact..."
+            cp -r ./test_result.xcresult coverage_raw/
+
+            echo "Converting coverage to sonar-coverage.xml..."
             bash ./xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+
+            echo "Preview of converted coverage (first 20 lines):"
+            head -n 20 sonar-coverage.xml
+
           elif [ "$TYPE" = "SwiftPackage" ]; then
-            PROFDATA=$(find . -name "*.profdata" | head -n1 || true)
-            EXECUTABLES=$(find .build/debug -type f -perm -111 || true)
+            PROFDATA=$(find . -name "*.profdata" | head -n1)
+            EXECUTABLES=$(find .build/debug -type f -perm +111)
             if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
+              cp "$PROFDATA" coverage_raw/
+              echo "Converting coverage to sonar-coverage.xml..."
               llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
                 | lcov-to-sonarxml -o sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+              echo "Preview of converted coverage (first 20 lines):"
+              head -n 20 sonar-coverage.xml
             else
               echo '<coverage/>' > sonar-coverage.xml
             fi
           else
             echo '<coverage/>' > sonar-coverage.xml
           fi
+
+      - name: Upload raw coverage artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-raw
+          path: coverage_raw/
 
       - name: SonarCloud Scan - Push/Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
