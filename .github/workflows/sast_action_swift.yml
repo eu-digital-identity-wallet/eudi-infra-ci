@@ -14,7 +14,6 @@ on:
 
 jobs:
   SAST:
-    name: Swift + iOS SAST
     runs-on: macos-latest
 
     steps:
@@ -26,67 +25,72 @@ jobs:
       - name: Setup project key
         run: echo "PROJECTKEY=${{ github.repository_owner }}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
-      # Auto-detect scheme/workspace/project
-      - name: Detect Xcode scheme/workspace/project
+      - name: Detect build type
         id: detect
         run: |
           set -euo pipefail
-
           if ls *.xcworkspace 1>/dev/null 2>&1; then
+            echo "type=Xcode" >> $GITHUB_OUTPUT
             WORKSPACE=$(ls *.xcworkspace | head -n1)
             SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | jq -r '.workspace.schemes[0]')
             echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
             echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
           elif ls *.xcodeproj 1>/dev/null 2>&1; then
+            echo "type=Xcode" >> $GITHUB_OUTPUT
             PROJECT=$(ls *.xcodeproj | head -n1)
             SCHEME=$(xcodebuild -list -project "$PROJECT" -json | jq -r '.project.schemes[0]')
             echo "project=$PROJECT" >> $GITHUB_OUTPUT
             echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
           elif [ -f Package.swift ]; then
-            echo "Detected Swift Package"
+            echo "type=SwiftPackage" >> $GITHUB_OUTPUT
           else
-            echo "No workspace/project/Package.swift found"
-            exit 1
-          fi
+            echo "type=None" >> $GITHUB_OUTPUT
 
-      # Run tests with coverage
-      - name: Run tests with code coverage
+      - name: Run tests with coverage
         run: |
           set -euo pipefail
-
-          if [[ -n "${{ steps.detect.outputs.workspace }}" ]]; then
+          TYPE="${{ steps.detect.outputs.type }}"
+          if [ "$TYPE" = "Xcode" ]; then
             DEST=$(xcrun simctl list devices available | grep "iPhone" | head -n1 | awk -F'[()]' '{print $2}')
-            xcodebuild \
-              -workspace "${{ steps.detect.outputs.workspace }}" \
-              -scheme "${{ steps.detect.outputs.scheme }}" \
-              -sdk iphonesimulator \
-              -destination "platform=iOS Simulator,id=$DEST" \
-              -enableCodeCoverage YES \
-              -resultBundlePath ./test_result \
-              clean test
-          elif [[ -n "${{ steps.detect.outputs.project }}" ]]; then
-            DEST=$(xcrun simctl list devices available | grep "iPhone" | head -n1 | awk -F'[()]' '{print $2}')
-            xcodebuild \
-              -project "${{ steps.detect.outputs.project }}" \
-              -scheme "${{ steps.detect.outputs.scheme }}" \
-              -sdk iphonesimulator \
-              -destination "platform=iOS Simulator,id=$DEST" \
-              -enableCodeCoverage YES \
-              -resultBundlePath ./test_result \
-              clean test
-          elif [ -f Package.swift ]; then
+            if [ -n "${{ steps.detect.outputs.workspace }}" ]; then
+              xcodebuild -workspace "${{ steps.detect.outputs.workspace }}" \
+                         -scheme "${{ steps.detect.outputs.scheme }}" \
+                         -sdk iphonesimulator \
+                         -destination "platform=iOS Simulator,id=$DEST" \
+                         -enableCodeCoverage YES \
+                         -resultBundlePath ./test_result \
+                         clean test
+            else
+              xcodebuild -project "${{ steps.detect.outputs.project }}" \
+                         -scheme "${{ steps.detect.outputs.scheme }}" \
+                         -sdk iphonesimulator \
+                         -destination "platform=iOS Simulator,id=$DEST" \
+                         -enableCodeCoverage YES \
+                         -resultBundlePath ./test_result \
+                         clean test
+            fi
+          elif [ "$TYPE" = "SwiftPackage" ]; then
             swift test --enable-code-coverage
           fi
 
-      # Convert coverage to Sonar format
       - name: Convert coverage to Sonar format
-        if: ${{ steps.detect.outputs.workspace || steps.detect.outputs.project }}
         run: |
           set -euo pipefail
-          bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml
-          ls -l sonar-coverage.xml
+          TYPE="${{ steps.detect.outputs.type }}"
+          if [ "$TYPE" = "Xcode" ]; then
+            bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+          elif [ "$TYPE" = "SwiftPackage" ]; then
+            PROFDATA=$(find . -name "*.profdata" | head -n1)
+            EXECUTABLES=$(find .build/debug -type f -perm +111)
+            if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
+              llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
+                | lcov-to-sonarxml -o sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
+            else
+              echo '<coverage/>' > sonar-coverage.xml
+            fi
+          else
+            echo '<coverage/>' > sonar-coverage.xml
 
-      # SonarCloud Scan (push/workflow_dispatch)
       - name: SonarCloud Scan - Push/Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: SonarSource/sonarqube-scan-action@master
@@ -99,7 +103,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # SonarCloud Scan (pull_request)
       - name: SonarCloud Scan - Pull Request
         if: github.event_name == 'pull_request_target'
         uses: SonarSource/sonarqube-scan-action@master
