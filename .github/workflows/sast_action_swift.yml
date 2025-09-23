@@ -32,22 +32,27 @@ jobs:
         id: detect
         run: |
           set -euo pipefail
+
           if ls *.xcworkspace 1>/dev/null 2>&1; then
             echo "type=Xcode" >> $GITHUB_OUTPUT
             WORKSPACE=$(ls *.xcworkspace | head -n1)
             SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | jq -r '.workspace.schemes[0]')
             echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
             echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+
           elif ls *.xcodeproj 1>/dev/null 2>&1; then
             echo "type=Xcode" >> $GITHUB_OUTPUT
             PROJECT=$(ls *.xcodeproj | head -n1)
             SCHEME=$(xcodebuild -list -project "$PROJECT" -json | jq -r '.project.schemes[0]')
             echo "project=$PROJECT" >> $GITHUB_OUTPUT
             echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+
           elif [ -f Package.swift ]; then
             echo "type=SwiftPackage" >> $GITHUB_OUTPUT
+
           else
             echo "type=None" >> $GITHUB_OUTPUT
+          fi
 
       # Run tests with coverage
       - name: Run tests with coverage
