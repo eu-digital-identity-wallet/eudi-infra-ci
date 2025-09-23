@@ -115,7 +115,7 @@ jobs:
           fi
 
       - name: Upload raw coverage artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-raw
           path: coverage_raw/
