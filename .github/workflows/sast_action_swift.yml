@@ -45,6 +45,7 @@ jobs:
             echo "type=SwiftPackage" >> $GITHUB_OUTPUT
           else
             echo "type=None" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run tests with coverage
         run: |
