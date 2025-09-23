@@ -88,12 +88,12 @@ jobs:
           set -euo pipefail
           mkdir -p coverage_raw
           TYPE="${{ steps.detect.outputs.type }}"
-          
+
           if [ "$TYPE" = "Xcode" ]; then
-            # Make sure your script is fetched if not already present
             curl -sSL -o xccov-to-sonarqube-generic.sh https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh
             chmod +x xccov-to-sonarqube-generic.sh
             bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
+
           elif [ "$TYPE" = "SwiftPackage" ]; then
             PROFDATA=$(find .build/debug -name "*.profdata" | head -n1)
             EXECUTABLES=$(find .build/debug -type f -perm +111)
@@ -102,8 +102,11 @@ jobs:
                 | lcov-to-sonarxml -o coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
             else
               echo "<coverage/>" > coverage_raw/sonar-coverage.xml
+            fi
+
           else
             echo "<coverage/>" > coverage_raw/sonar-coverage.xml
+          fi
 
       # Upload raw coverage for inspection
       - name: Upload raw coverage artifact
