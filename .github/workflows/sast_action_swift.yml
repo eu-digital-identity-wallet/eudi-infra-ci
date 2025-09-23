@@ -74,19 +74,21 @@ jobs:
             swift test --enable-code-coverage
           fi
 
+      - name: Download coverage conversion script (Xcode only)
+        if: ${{ steps.detect.outputs.type == 'Xcode' }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+          chmod +x xccov-to-sonarqube-generic.sh
+
       - name: Convert coverage to Sonar format
         run: |
           set -euo pipefail
           TYPE="${{ steps.detect.outputs.type }}"
           if [ "$TYPE" = "Xcode" ]; then
-            if [ -d "./test_result" ]; then
-              bash xccov-to-sonarqube-generic.sh ./test_result > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
-            else
-              echo '<coverage/>' > sonar-coverage.xml
-            fi
+            bash ./xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
           elif [ "$TYPE" = "SwiftPackage" ]; then
-            PROFDATA=$(find . -name "*.profdata" | head -n1)
-            EXECUTABLES=$(find .build/debug -type f -perm -111)
+            PROFDATA=$(find . -name "*.profdata" | head -n1 || true)
+            EXECUTABLES=$(find .build/debug -type f -perm -111 || true)
             if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
               llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
                 | lcov-to-sonarxml -o sonar-coverage.xml || echo '<coverage/>' > sonar-coverage.xml
@@ -99,7 +101,7 @@ jobs:
 
       - name: SonarCloud Scan - Push/Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        uses: sonarsource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
@@ -111,7 +113,7 @@ jobs:
 
       - name: SonarCloud Scan - Pull Request
         if: github.event_name == 'pull_request_target'
-        uses: sonarsource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
