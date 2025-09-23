@@ -91,6 +91,7 @@ jobs:
             fi
           else
             echo '<coverage/>' > sonar-coverage.xml
+          fi
 
       - name: Save raw coverage artifact
         run: |
