@@ -37,19 +37,26 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      # Run Fastlane lane (project handles scheme/package internally)
+      # Run Fastlane lane (tests only, do not call xcov)
       - name: Run Fastlane code_coverage
         run: fastlane code_coverage
         env:
           CI: true
+          SKIP_XCOV: true   # optional: if Fastfile supports skipping xcov in CI
 
-      # Convert xcresult -> Sonar XML
-      - name: Convert coverage to Sonar XML
+      # Locate the generated .xcresult
+      - name: Locate xcresult
         run: |
           mkdir -p sonar-reports
-          bash ci-scripts/xccov-to-sonarqube-generic.sh xcov_output/*.xcresult > sonar-reports/coverage.xml
+          XCRESULT=$(find xcov_output -name "*.xcresult" | head -n 1)
+          echo "XCRESULT=$XCRESULT" >> $GITHUB_ENV
 
-      # Upload XML to be used in SonarCloud analysis
+      # Convert .xcresult -> Sonar XML using internal script
+      - name: Convert coverage to Sonar XML
+        run: |
+          bash ci-scripts/xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
+
+      # Upload XML artifact for the SAST job
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -76,7 +83,7 @@ jobs:
       - name: Setup project key
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
-      # Run SonarCloud analysis (with coverage XML)
+      # Run SonarCloud analysis with coverage
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
         with:
@@ -87,3 +94,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Send report to DefectDojo
+        if: ${{ secrets.DOJO_TOKEN && secrets.DOJO_URL }}
+        run: |
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
+            -H "Authorization: Token $DOJO_TOKEN" \
+            -F "active=true" \
+            -F "scan_type=SonarQube Scan detailed" \
+            -F "minimum_severity=Info" \
+            -F "skip_duplicates=true" \
+            -F "close_old_findings=true" \
+            -F "file=@sonar-reports/coverage.xml" \
+            -F "scan_date=$SCAN_DATE" \
+            -F "auto_create_context=True" \
+            -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
+            -F "engagement_name=Static Application Security Testing - ${{ github.repository }}-${{ github.ref_name }}"
+        env:
+          DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+          DOJO_URL: ${{ secrets.DOJO_URL }}
