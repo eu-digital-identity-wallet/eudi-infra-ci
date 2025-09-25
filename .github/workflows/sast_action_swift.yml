@@ -1,4 +1,4 @@
-name: SAST - SonarCloud (Swift + Coverage)
+name: SAST - SonarCloud (Action)
 
 on:
   workflow_call:
@@ -7,140 +7,83 @@ on:
         required: false
       SONAR_TOKEN:
         required: true
-      DOJO_TOKEN:
+      DOJO_TOKEN: 
         required: false
-      DOJO_URL:
+      DOJO_URL: 
         required: false
 
 jobs:
-  SAST:
-    runs-on: macos-latest
 
+  check_secret:
+    name: Check secret presence
+    runs-on: ubuntu-latest
     steps:
-      # Checkout
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - run: |
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            echo "SONAR_TOKEN missing"; exit 1
+          else
+            echo "Secret exists. The workflow will continue"
+          fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  coverage:
+    name: Build & Coverage
+    runs-on: macos-14
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.1'
+
+      - uses: actions/checkout@v4
+
+      # Run Fastlane lane (project handles scheme/package internally)
+      - name: Run Fastlane code_coverage
+        run: fastlane code_coverage
+        env:
+          CI: true
+
+      # Convert xcresult -> Sonar XML
+      - name: Convert coverage to Sonar XML
+        run: |
+          mkdir -p sonar-reports
+          bash ci-scripts/xccov-to-sonarqube-generic.sh xcov_output/*.xcresult > sonar-reports/coverage.xml
+
+      # Upload XML to be used in SonarCloud analysis
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: sonar-reports/coverage.xml
+
+  SAST:
+    name: SAST - SonarCloud analysis
+    needs: [check_secret, coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Download coverage report from previous job
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: sonar-reports
+
       # Setup project key
       - name: Setup project key
-        run: echo "PROJECTKEY=${{ github.repository_owner }}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
+        run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
-      # Detect build type
-      - name: Detect build type
-        id: detect
-        run: |
-          set -euo pipefail
-
-          if ls *.xcworkspace 1>/dev/null 2>&1; then
-            echo "type=Xcode" >> $GITHUB_OUTPUT
-            WORKSPACE=$(ls *.xcworkspace | head -n1)
-            SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | jq -r '.workspace.schemes[0]')
-            echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
-            echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
-
-          elif ls *.xcodeproj 1>/dev/null 2>&1; then
-            echo "type=Xcode" >> $GITHUB_OUTPUT
-            PROJECT=$(ls *.xcodeproj | head -n1)
-            SCHEME=$(xcodebuild -list -project "$PROJECT" -json | jq -r '.project.schemes[0]')
-            echo "project=$PROJECT" >> $GITHUB_OUTPUT
-            echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
-
-          elif [ -f Package.swift ]; then
-            echo "type=SwiftPackage" >> $GITHUB_OUTPUT
-
-          else
-            echo "type=None" >> $GITHUB_OUTPUT
-          fi
-
-      # Run tests with coverage
-      - name: Run tests with coverage
-        run: |
-          set -euo pipefail
-          TYPE="${{ steps.detect.outputs.type }}"
-          if [ "$TYPE" = "Xcode" ]; then
-            DEST=$(xcrun simctl list devices available | grep "iPhone" | head -n1 | awk -F'[()]' '{print $2}')
-            if [ -n "${{ steps.detect.outputs.workspace }}" ]; then
-              xcodebuild -workspace "${{ steps.detect.outputs.workspace }}" \
-                         -scheme "${{ steps.detect.outputs.scheme }}" \
-                         -sdk iphonesimulator \
-                         -destination "platform=iOS Simulator,id=$DEST" \
-                         -enableCodeCoverage YES \
-                         -resultBundlePath ./test_result \
-                         clean test
-            else
-              xcodebuild -project "${{ steps.detect.outputs.project }}" \
-                         -scheme "${{ steps.detect.outputs.scheme }}" \
-                         -sdk iphonesimulator \
-                         -destination "platform=iOS Simulator,id=$DEST" \
-                         -enableCodeCoverage YES \
-                         -resultBundlePath ./test_result \
-                         clean test
-            fi
-          elif [ "$TYPE" = "SwiftPackage" ]; then
-            swift test --enable-code-coverage
-          fi
-
-      # Convert coverage to Sonar format
-      - name: Convert coverage to Sonar format
-        run: |
-          set -euo pipefail
-          mkdir -p coverage_raw
-          TYPE="${{ steps.detect.outputs.type }}"
-
-          if [ "$TYPE" = "Xcode" ]; then
-            curl -sSL -o xccov-to-sonarqube-generic.sh https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh
-            chmod +x xccov-to-sonarqube-generic.sh
-            bash xccov-to-sonarqube-generic.sh ./test_result.xcresult/ > coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
-
-          elif [ "$TYPE" = "SwiftPackage" ]; then
-            PROFDATA=$(find .build/debug -name "*.profdata" | head -n1)
-            EXECUTABLES=$(find .build/debug -type f -perm +111)
-            if [ -n "$PROFDATA" ] && [ -n "$EXECUTABLES" ]; then
-              llvm-cov export -instr-profile="$PROFDATA" $EXECUTABLES -format=lcov \
-                | lcov-to-sonarxml -o coverage_raw/sonar-coverage.xml || echo "<coverage/>" > coverage_raw/sonar-coverage.xml
-            else
-              echo "<coverage/>" > coverage_raw/sonar-coverage.xml
-            fi
-
-          else
-            echo "<coverage/>" > coverage_raw/sonar-coverage.xml
-          fi
-
-      # Upload raw coverage for inspection
-      - name: Upload raw coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-raw
-          path: coverage_raw/
-          if-no-files-found: warn
-
-      # SonarCloud Scan - Push/Dispatch
-      - name: SonarCloud Scan - Push/Dispatch
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      # Run SonarCloud analysis (with coverage XML)
+      - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
-            -Dsonar.coverageReportPaths=coverage_raw/sonar-coverage.xml
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # SonarCloud Scan - Pull Request
-      - name: SonarCloud Scan - Pull Request
-        if: github.event_name == 'pull_request_target'
-        uses: SonarSource/sonarqube-scan-action@master
-        with:
-          args: >
-            -Dsonar.organization=${{ github.repository_owner }}
-            -Dsonar.projectKey=${{ env.PROJECTKEY }}
-            -Dsonar.coverageReportPaths=coverage_raw/sonar-coverage.xml
-            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
-            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+            -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
