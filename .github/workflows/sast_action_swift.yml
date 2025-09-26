@@ -56,7 +56,10 @@ jobs:
           mkdir -p sonar-reports
           XCRESULT=$(find xcov_output -name "*.xcresult" | head -n 1)
           echo "Using $XCRESULT"
-          bash ci-scripts/xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
+          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+          chmod +x xccov-to-sonarqube-generic.sh
+
+          bash xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
 
       # Setup project key
       - name: setup projectkey
