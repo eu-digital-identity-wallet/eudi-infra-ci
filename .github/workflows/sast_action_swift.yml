@@ -61,6 +61,13 @@ jobs:
 
           bash xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
 
+      # Upload coverage.xml as an artifact for inspection
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-coverage-report
+          path: sonar-reports/coverage.xml
+
       # Setup project key
       - name: setup projectkey
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
