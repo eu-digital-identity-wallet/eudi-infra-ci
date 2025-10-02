@@ -1,0 +1,145 @@
+name: SAST - SonarCloud with Swift coverage
+
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: false
+      SONAR_TOKEN:
+        required: true
+      DOJO_TOKEN: 
+        required: false
+      DOJO_URL: 
+        required: false
+
+jobs:
+
+  check_secret:
+    name: Check secret presence
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            echo "SONAR_TOKEN missing, stopping workflow"
+            exit 1
+          else
+            echo "SONAR_TOKEN exists, continuing workflow"
+          fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  SAST:
+    name: SAST - SonarCloud analysis with Swift coverage
+    needs: check_secret
+    runs-on: macos-14
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.1'
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bundle update
+        run: bundle update
+
+      # Run Fastlane lane (produces .xcresult)
+      - name: Run Fastlane code_coverage
+        run: fastlane code_coverage
+        env:
+          CI: true
+
+      # Convert the xcresult -> coverage.xml using your internal script
+      - name: Convert coverage to Sonar XML
+        run: |
+          mkdir -p sonar-reports
+          XCRESULT=$(find xcov_output -name "*.xcresult" | head -n 1)
+          echo "Using $XCRESULT"
+          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+          chmod +x xccov-to-sonarqube-generic.sh
+
+          bash xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
+
+      # Upload coverage.xml as an artifact for inspection
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-coverage-report
+          path: sonar-reports/coverage.xml
+
+      # Setup project key
+      - name: setup projectkey
+        run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
+
+      # SonarCloud scan - push / workflow_dispatch
+      - name: SonarCloud Scan - Push / Workflow Dispatch
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: SonarSource/sonarqube-scan-action@master
+        with:
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # SonarCloud scan - pull request
+      - name: SonarCloud Scan - Pull Request
+        if: github.event_name == 'pull_request_target'
+        uses: SonarSource/sonarqube-scan-action@master
+        with:
+          args: >
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.projectKey=${{ env.PROJECTKEY }}
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
+            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+            -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Setup Node and run sonar-report
+      - name: Setup Node 
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install "sonar-report"  and run it
+        if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main'
+        run: |
+          npm cache clean --force
+          npm install -g sonar-report@3.0.10
+          export "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')"
+          sonar-report \
+            --sonarurl="https://sonarcloud.io" \
+            --sonarorganization="${{ github.repository_owner }}" \
+            --branch="${{ github.ref_name }}" \
+            --sonartoken="${{ secrets.SONAR_TOKEN }}" \
+            --output sonarreport.html \
+            --application="$PROJECTKEY" \
+            --sonarcomponent="$PROJECTKEY"
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Send report to DefectDojo
+        if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: |
+          export "SCAN_DATE=$(TZ='EET' date '+%Y-%m-%d')"
+          curl -X POST "$DOJO_URL/api/v2/reimport-scan/" \
+            -H "Authorization: Token $DOJO_TOKEN" \
+            -F "active=true" \
+            -F "scan_type=SonarQube Scan detailed" \
+            -F "minimum_severity=Info" \
+            -F "skip_duplicates=true" \
+            -F "close_old_findings=true" \
+            -F "file=@sonarreport.html" \
+            -F "scan_date=$SCAN_DATE" \
+            -F "auto_create_context=True" \
+            -F "product_name=${{ github.repository }}-${{ github.ref_name }}" \
+            -F "engagement_name=Static Application Security Testing - ${{ github.repository }}-${{ github.ref_name }}"
+        env:
+          DOJO_TOKEN: ${{ secrets.DOJO_TOKEN }}
+          DOJO_URL: ${{ secrets.DOJO_URL }}
