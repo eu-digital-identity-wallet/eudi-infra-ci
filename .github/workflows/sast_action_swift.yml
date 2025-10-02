@@ -108,6 +108,7 @@ jobs:
           node-version: 18
 
       - name: Install "sonar-report"  and run it
+        if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main'
         run: |
           npm cache clean --force
           npm install -g sonar-report@3.0.10
