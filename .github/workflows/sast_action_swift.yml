@@ -63,7 +63,7 @@ jobs:
 
       - name: Normalize coverage paths
         run: |
-          sed -i "s|$GITHUB_WORKSPACE/||g" sonar-reports/coverage.xml
+          sed -i '' "s|$GITHUB_WORKSPACE/||g" sonar-reports/coverage.xml
 
       # Upload coverage.xml as an artifact for inspection
       - name: Upload coverage report
