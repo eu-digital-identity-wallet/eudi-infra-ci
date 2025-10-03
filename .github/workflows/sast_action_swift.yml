@@ -61,6 +61,10 @@ jobs:
 
           bash xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
 
+      - name: Normalize coverage paths
+        run: |
+          sed -i "s|$GITHUB_WORKSPACE/||g" sonar-reports/coverage.xml
+
       # Upload coverage.xml as an artifact for inspection
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -80,7 +84,7 @@ jobs:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
-            -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
+            -Dsonar.coverageReportPaths=sonar-reports/coverage.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
