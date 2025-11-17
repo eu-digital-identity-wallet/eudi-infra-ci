@@ -1,4 +1,4 @@
-name: SAST - SonarCloud (BT) - With Android Coverage
+name: SAST - SonarCloud (BT) - With Coverage
 
 on:
   workflow_call:
@@ -35,7 +35,8 @@ jobs:
       - name: Checkout project sources
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of SonarCloud analysis
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -54,14 +55,20 @@ jobs:
       - name: SonarCloud Scan - Gradle Wrapper - Push or Workflow Dispatch Analysis
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: |
+          # 1) Run tests and generate Kover XML
           ./gradlew \
             testDevDebugUnitTest \
             koverXmlReportDevDebug \
+            --info --full-stacktrace
+
+          # 2) Run Sonar using the generated XML
+          ./gradlew \
             sonar \
             --info --full-stacktrace \
             -Dsonar.organization=${{ github.repository_owner }} \
             -Dsonar.projectKey=${{ env.PROJECTKEY }} \
             -Dsonar.host.url=${{ vars.SONAR_URL }} \
+            -Dsonar.scanner.dumpToFile=sonar-dump.txt \
             -Dsonar.coverage.jacoco.xmlReportPaths=assembly-logic/build/reports/kover/reportDevDebug.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,9 +77,14 @@ jobs:
       - name: SonarCloud Scan - Gradle Wrapper - Pull Request Analysis
         if: (github.event_name == 'pull_request_target')
         run: |
+          # 1) Run tests and generate Kover XML
           ./gradlew \
             testDevDebugUnitTest \
             koverXmlReportDevDebug \
+            --info --full-stacktrace
+
+          # 2) Run Sonar using the generated XML for PR context
+          ./gradlew \
             sonar \
             --info --full-stacktrace \
             -Dsonar.organization=${{ github.repository_owner }} \
@@ -81,10 +93,24 @@ jobs:
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }} \
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} \
             -Dsonar.host.url=${{ vars.SONAR_URL }} \
+            -Dsonar.scanner.dumpToFile=sonar-dump.txt \
             -Dsonar.coverage.jacoco.xmlReportPaths=assembly-logic/build/reports/kover/reportDevDebug.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: List Kover & Sonar files
+        if: always()
+        run: |
+          echo "== Kover output =="
+          ls -R assembly-logic/build/reports/kover || echo "No kover dir"
+
+          echo "== Sonar dump =="
+          if [ -f sonar-dump.txt ]; then
+            echo "sonar-dump.txt exists"
+          else
+            echo "No sonar-dump.txt file"
+          fi
 
       - name: Setup Node 
         uses: actions/setup-node@v4
