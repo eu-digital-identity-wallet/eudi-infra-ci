@@ -57,8 +57,8 @@ jobs:
         with:
           swift-version: ${{ inputs.swift_version }} 
           
-      - name: Bundle update
-        run: bundle update
+      - name: Bundle install
+        run: bundle install
 
       # Run Fastlane lane (produces .xcresult)
       - name: Run Fastlane code_coverage
