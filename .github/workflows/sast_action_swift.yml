@@ -42,11 +42,11 @@ jobs:
   SAST:
     name: SAST - SonarCloud analysis with Swift coverage
     needs: check_secret
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: '26.0'
 
       - uses: actions/checkout@v4
         with:
