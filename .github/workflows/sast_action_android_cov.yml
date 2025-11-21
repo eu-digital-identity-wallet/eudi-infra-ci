@@ -9,15 +9,41 @@ on:
         required: true
       DOJO_TOKEN:
         required: false
-      DOJO_URL:  
+      DOJO_URL:
         required: false
+    inputs:
+      unit_test_task:
+        description: 'Gradle task for unit tests (if empty, auto-detect)'
+        required: false
+        type: string
+        default: ''
+      kover_task:
+        description: 'Gradle task that generates Kover XML (if empty, auto-detect)'
+        required: false
+        type: string
+        default: ''
+      kover_report_path:
+        description: 'Path to Kover XML report for Sonar'
+        required: false
+        type: string
+        default: 'assembly-logic/build/reports/kover/reportDevDebug.xml'
+      android_variant:
+        description: 'Android variant for Sonar (e.g. devDebug, debug, etc.)'
+        required: false
+        type: string
+        default: 'devDebug'
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   check-secret:
     name: Check secret presence
     runs-on: ubuntu-latest
     steps:
-      - run: if [[ -z "$SONAR_TOKEN" ]]; then exit 1; else echo "SONAR_TOKEN exists."; fi
+      - name: Check SONAR_TOKEN
+        run: if [[ -z "$SONAR_TOKEN" ]]; then exit 1; else echo "SONAR_TOKEN exists."; fi
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -40,6 +66,7 @@ jobs:
           java-version: 17
 
       - uses: gradle/actions/wrapper-validation@v4
+
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Set project metadata
@@ -50,24 +77,55 @@ jobs:
       - name: Clean Gradle build
         run: ./gradlew clean
 
+      - name: Validate Gradle task inputs (basic)
+        run: |
+          validate_task() {
+            local task="$1"
+            local name="$2"
+            if [ -n "$task" ]; then
+              if ! [[ "$task" =~ ^[a-zA-Z0-9:_-]+$ ]]; then
+                echo "Invalid $name: '$task'. Only [a-zA-Z0-9:_-] allowed."
+                exit 1
+              fi
+            fi
+          }
+
+          validate_task "${{ inputs.unit_test_task }}" "unit_test_task"
+          validate_task "${{ inputs.kover_task }}" "kover_task"
+
       - name: Run Unit Tests
         run: |
-          if ./gradlew tasks --all | grep -q testDevDebugUnitTest; then
-            ./gradlew testDevDebugUnitTest
+          if [ -n "${{ inputs.unit_test_task }}" ]; then
+            echo "Using custom unit test task: ${{ inputs.unit_test_task }}"
+            ./gradlew "${{ inputs.unit_test_task }}"
           else
-            ./gradlew testDebugUnitTest
+            echo "No custom unit_test_task provided, trying defaults…"
+            if ./gradlew tasks --all | grep -q testDevDebugUnitTest; then
+              ./gradlew testDevDebugUnitTest
+            elif ./gradlew tasks --all | grep -q testDebugUnitTest; then
+              ./gradlew testDebugUnitTest
+            else
+              echo "No known unit test tasks found"; exit 1
+            fi
           fi
 
       - name: Generate Kover XML Coverage Report
         run: |
-          if ./gradlew tasks --all | grep -q koverXmlReportDevDebug; then
-            ./gradlew koverXmlReportDevDebug
+          if [ -n "${{ inputs.kover_task }}" ]; then
+            echo "Using custom Kover task: ${{ inputs.kover_task }}"
+            ./gradlew "${{ inputs.kover_task }}"
           else
-            echo "koverXmlReportDevDebug task not found"; exit 1
+            echo "No custom kover_task provided, trying default koverXmlReportDevDebug…"
+            if ./gradlew tasks --all | grep -q koverXmlReportDevDebug; then
+              ./gradlew koverXmlReportDevDebug
+            else
+              echo "koverXmlReportDevDebug task not found and no custom kover_task given"; exit 1
+            fi
           fi
 
-      - name: Generate sonar.sources and sonar.tests dynamically
+      - name: Generate sonar.sources dynamically
         run: |
+          # Collect all src/main folders as sonar.sources
           echo "SONAR_SOURCES=$(find . -type d -path "*/src/main" | paste -sd ',' -)" >> $GITHUB_ENV
 
       - uses: sonarsource/sonarqube-scan-action@v5.3.1
@@ -77,13 +135,13 @@ jobs:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECT_KEY }}
-            -Dsonar.androidVariant=devDebug
+            -Dsonar.androidVariant=${{ inputs.android_variant }}
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.language=kotlin
             -Dsonar.sources=${{ env.SONAR_SOURCES }}
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
-            -Dsonar.coverage.jacoco.xmlReportPaths=assembly-logic/build/reports/kover/reportDevDebug.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=${{ inputs.kover_report_path }}
             -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: sonarsource/sonarqube-scan-action@v5.3.1
@@ -101,7 +159,7 @@ jobs:
             -Dsonar.sources=${{ env.SONAR_SOURCES }}
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
-            -Dsonar.coverage.jacoco.xmlReportPaths=assembly-logic/build/reports/kover/reportDevDebug.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=${{ inputs.kover_report_path }}
             -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: actions/setup-node@v4
