@@ -52,6 +52,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true  
+          
       - name: Set up Swift
         uses: swift-actions/setup-swift@v2
         with:
