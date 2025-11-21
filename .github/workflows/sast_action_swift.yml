@@ -3,10 +3,6 @@ name: SAST - SonarCloud with Swift coverage
 on:
   workflow_call:
     inputs:
-      swift_version:
-        required: false
-        type: string
-        default: "6.0"
       app_project:
         required: false
         type: string
@@ -56,12 +52,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-cache: true  
-          
-      - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: ${{ inputs.swift_version }} 
+          bundler-cache: true
           
       - name: Bundle install
         run: bundle install
