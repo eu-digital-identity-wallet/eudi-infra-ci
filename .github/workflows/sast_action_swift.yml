@@ -2,6 +2,11 @@ name: SAST - SonarCloud with Swift coverage
 
 on:
   workflow_call:
+    inputs:
+      swift_version:
+        required: false
+        type: string
+        default: "6.0"
     secrets:
       GH_TOKEN:
         required: false
@@ -41,6 +46,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ inputs.swift_version }} 
+          
       - name: Bundle update
         run: bundle update
 
