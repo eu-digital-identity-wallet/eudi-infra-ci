@@ -68,7 +68,7 @@ jobs:
 
       # Run Fastlane lane (produces .xcresult)
       - name: Run Fastlane code_coverage
-        run: fastlane code_coverage
+        run: bundle exec fastlane code_coverage
         env:
           CI: true
           APP_PROJECT: ${{ inputs.app_project }} 
