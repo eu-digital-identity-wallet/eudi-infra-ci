@@ -95,6 +95,7 @@ jobs:
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ env.PROJECTKEY }}
             -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
+            -Dsonar.exclusions=**/*.java
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
