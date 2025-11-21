@@ -1,11 +1,6 @@
 name: SAST - SonarCloud (Action)
 on:
   workflow_call:
-    inputs:
-      swift_version:
-        required: false
-        type: string
-        default: "6.0"
     secrets:
       GH_TOKEN:
         required: false
@@ -36,10 +31,6 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
          #ref: ${{ github.event.pull_request.head.sha }}
-      - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: ${{ inputs.swift_version }} 
       - name: setup projectkey
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
       - name: SonarCloud Scan - GH Action - Push or Workflow Dispatch
