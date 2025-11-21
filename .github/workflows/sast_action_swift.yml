@@ -2,6 +2,17 @@ name: SAST - SonarCloud with Swift coverage
 
 on:
   workflow_call:
+    inputs:
+      app_project:
+        description: "Xcode project (.xcodeproj) to build"
+        required: false
+        type: string
+        default: "EudiReferenceWallet.xcodeproj"
+      app_scheme:
+        description: "Xcode scheme to use for tests/coverage"
+        required: false
+        type: string
+        default: "EUDI Wallet Dev"
     secrets:
       GH_TOKEN:
         required: false
@@ -48,6 +59,8 @@ jobs:
         run: fastlane code_coverage
         env:
           CI: true
+          APP_PROJECT: ${{ inputs.app_project }}
+          APP_SCHEME: ${{ inputs.app_scheme }}
 
       - name: Convert coverage to Sonar XML
         run: |
