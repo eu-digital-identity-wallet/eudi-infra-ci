@@ -7,6 +7,12 @@ on:
         required: false
         type: string
         default: "6.0"
+      app_project:
+        required: false
+        type: string
+      app_scheme:
+        required: false
+        type: string
     secrets:
       GH_TOKEN:
         required: false
@@ -59,7 +65,8 @@ jobs:
         run: fastlane code_coverage
         env:
           CI: true
-
+          APP_PROJECT: ${{ inputs.app_project }} 
+          APP_SCHEME: ${{ inputs.app_scheme }} 
       # Convert the xcresult -> coverage.xml using your internal script
       - name: Convert coverage to Sonar XML
         run: |
