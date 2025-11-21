@@ -55,16 +55,6 @@ jobs:
       - name: Bundle update
         run: bundle update
 
-      - name: Debug app_project/app_scheme inputs
-        run: |
-          echo "inputs.app_project='${{ inputs.app_project }}'"
-          echo "inputs.app_scheme='${{ inputs.app_scheme }}'"
-          echo "APP_PROJECT='$APP_PROJECT'"
-          echo "APP_SCHEME='$APP_SCHEME'"
-        env:
-          APP_PROJECT: ${{ inputs.app_project }}
-          APP_SCHEME: ${{ inputs.app_scheme }}
-
       - name: Run Fastlane code_coverage
         run: fastlane code_coverage
         env:
