@@ -57,7 +57,7 @@ jobs:
           CI: true
           APP_PROJECT: ${{ inputs.app_project }} 
           APP_SCHEME: ${{ inputs.app_scheme }} 
-      # Convert the xcresult -> coverage.xml using your internal script
+
       - name: Convert coverage to Sonar XML
         run: |
           mkdir -p sonar-reports
