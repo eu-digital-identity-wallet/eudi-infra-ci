@@ -61,7 +61,7 @@ jobs:
         run: |
           echo "SONAR_SOURCES=$(find . -type d -path "*/src/main" | paste -sd ',' -)" >> $GITHUB_ENV
 
-      - uses: sonarsource/sonarqube-scan-action@v5.3.1
+      - uses: sonarsource/sonarqube-scan-action@v6.0.0
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
           projectBaseDir: ${{ github.workspace }}
@@ -76,7 +76,7 @@ jobs:
             -Dsonar.kotlin.binaries=build/classes/kotlin/
             -Dsonar.scanner.skipJreProvisioning=true
 
-      - uses: sonarsource/sonarqube-scan-action@v5.3.1
+      - uses: sonarsource/sonarqube-scan-action@v6.0.0
         if: github.event_name == 'pull_request_target'
         with:
           projectBaseDir: ${{ github.workspace }}
