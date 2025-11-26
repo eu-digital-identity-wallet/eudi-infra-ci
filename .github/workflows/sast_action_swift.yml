@@ -51,7 +51,6 @@ jobs:
       - name: Bundle install
         run: bundle install
 
-      # Run Fastlane lane (produces .xcresult)
       - name: Run Fastlane code_coverage
         run: bundle exec fastlane code_coverage
         env:
@@ -64,23 +63,24 @@ jobs:
           mkdir -p sonar-reports
           XCRESULT=$(find xcov_output -name "*.xcresult" | head -n 1)
           echo "Using $XCRESULT"
-          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/feat/swift_coverage/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
+          curl -fsSL https://raw.githubusercontent.com/eu-digital-identity-wallet/eudi-infra-ci/main/ci-scripts/xccov-to-sonarqube-generic.sh -o xccov-to-sonarqube-generic.sh
           chmod +x xccov-to-sonarqube-generic.sh
 
           bash xccov-to-sonarqube-generic.sh "$XCRESULT" > sonar-reports/coverage.xml
 
-      # Upload coverage.xml as an artifact for inspection
+      - name: Normalize coverage paths
+        run: |
+          sed -i '' "s|$GITHUB_WORKSPACE/||g" sonar-reports/coverage.xml
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: sonar-coverage-report
           path: sonar-reports/coverage.xml
 
-      # Setup project key
       - name: setup projectkey
         run: echo "PROJECTKEY=${{ github.repository_owner}}_$(echo ${{ github.repository }} | sed 's/.*\///')" >> $GITHUB_ENV
 
-      # SonarCloud scan - push / workflow_dispatch
       - name: SonarCloud Scan - Push / Workflow Dispatch
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: SonarSource/sonarqube-scan-action@master
@@ -94,7 +94,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # SonarCloud scan - pull request
       - name: SonarCloud Scan - Pull Request
         if: github.event_name == 'pull_request_target'
         uses: SonarSource/sonarqube-scan-action@master
@@ -105,12 +104,11 @@ jobs:
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-            -Dsonar.swift.coverage.reportPaths=sonar-reports/coverage.xml
+            -Dsonar.coverageReportPaths=sonar-reports/coverage.xml
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Setup Node and run sonar-report
       - name: Setup Node 
         uses: actions/setup-node@v4
         with:
