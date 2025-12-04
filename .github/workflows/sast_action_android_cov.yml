@@ -12,6 +12,11 @@ on:
       DOJO_URL:
         required: false
     inputs:
+      source_dirs:
+        description: 'Comma-separated list of source directories for Sonar. If empty, auto-detects.'
+        required: false
+        type: string
+        default: ''
       unit_test_task:
         description: 'Gradle task for unit tests (if empty, auto-detect)'
         required: false
