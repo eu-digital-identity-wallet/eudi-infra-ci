@@ -12,6 +12,11 @@ on:
       DOJO_URL:
         required: false
     inputs:
+      source_dirs:
+        description: 'Comma-separated list of source directories for Sonar. If empty, auto-detects.'
+        required: false
+        type: string
+        default: ''
       unit_test_task:
         description: 'Gradle task for unit tests (if empty, auto-detect)'
         required: false
@@ -123,9 +128,24 @@ jobs:
           fi
 
       - name: Generate sonar.sources dynamically
+        id: sonar_sources_step
         run: |
-          # Collect all src/main folders as sonar.sources
-          echo "SONAR_SOURCES=$(find . -type d -path "*/src/main" | paste -sd ',' -)" >> $GITHUB_ENV
+          SOURCES=""
+          if [ -n "${{ inputs.source_dirs }}" ]; then
+            echo "Using provided source_dirs input: ${{ inputs.source_dirs }}"
+            SOURCES="${{ inputs.source_dirs }}"
+          else
+            echo "No source_dirs provided. Using default search for '*/src/main'..."
+            SOURCES=$(find . -type d -path "*/src/main" | paste -sd ',' -)
+          fi
+
+          if [ -z "$SOURCES" ]; then
+            echo "::warning::No source directories found or provided. SonarQube analysis may report 0 lines of code."
+          else
+            echo "Final Sonar sources: $SOURCES"
+          fi
+          
+          echo "SONAR_SOURCES=$SOURCES" >> $GITHUB_ENV
 
       - uses: sonarsource/sonarqube-scan-action@v6.0.0
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
