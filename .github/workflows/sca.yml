@@ -40,18 +40,24 @@ jobs:
           key: dependency-check-cli-${{ env.DEP_CHECK_VERSION }}
           restore-keys: |
             dependency-check-cli-
-            
+
+      - name: Install Node.js dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          fi      
+          
      # Runs the dependency-check.sh script. If it does not exist (e.g. restored from cache), download the tool and run it
       - name: Dependency Check Scan - CLI
         continue-on-error: true
         run: |
          sudo gem install bundler-audit
           if [[ -f "dependency-check/bin/dependency-check.sh" ]]; then
-             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --disableOssIndex --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
           else
              wget https://github.com/dependency-check/DependencyCheck/releases/download/v${{ env.DEP_CHECK_VERSION }}/dependency-check-${{ env.DEP_CHECK_VERSION }}-release.zip
              unzip dependency-check-${{ env.DEP_CHECK_VERSION }}-release.zip
-             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
+             bash dependency-check/bin/dependency-check.sh --enableExperimental --enableRetired --disableOssIndex --nvdApiKey $NVD_API_KEY -s . -f XML -f HTML --project ${{ github.repository }}
           fi
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
