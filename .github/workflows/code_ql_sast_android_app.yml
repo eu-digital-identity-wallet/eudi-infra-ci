@@ -8,6 +8,14 @@ on:
         required: true
         default: "assembleDevDebug"
         type: string
+        
+  workflow_call:
+    inputs:
+      gradle-task:
+        description: "Gradle task to build"
+        required: false
+        default: "assembleDevDebug"
+        type: string
 
   pull_request:
     branches: [ "main" ]
