@@ -1,4 +1,4 @@
-name: "CodeQL SAST Android Application"
+name: "CodeQL SAST Android Application "
 
 on:
   workflow_dispatch:
