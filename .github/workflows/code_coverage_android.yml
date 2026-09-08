@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: eu-digital-identity-wallet/eudi-infra-ci
-          ref: main
+          ref: feat/kover_coverage_report_implementation
           path: .eudi-infra-ci
           sparse-checkout: scripts/coverage
           persist-credentials: false
