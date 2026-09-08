@@ -22,21 +22,12 @@ on:
     types: [ opened, synchronize, reopened ]
 
 permissions:
-  actions: read
-  security-events: write
-  packages: read
   contents: read
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
-
-    permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
 
     strategy:
       fail-fast: false
