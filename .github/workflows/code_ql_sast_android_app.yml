@@ -1,4 +1,4 @@
-name: "CodeQL SAST Android Application"
+name: "CodeQL SAST Android Application "
 
 on:
   workflow_dispatch:
@@ -21,16 +21,14 @@ on:
     branches: [ "main" ]
     types: [ opened, synchronize, reopened ]
 
+permissions:
+  security-events: write
+  contents: read
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
-
-    permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
 
     strategy:
       fail-fast: false
@@ -65,11 +63,3 @@ jobs:
         uses: github/codeql-action/analyze@v4.37.8
         with:
           category: "/language:${{ matrix.language }}"
-
-      - name: Upload CodeQL SARIF
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: codeql-sarif
-          path: results/*.sarif
-          if-no-files-found: warn
