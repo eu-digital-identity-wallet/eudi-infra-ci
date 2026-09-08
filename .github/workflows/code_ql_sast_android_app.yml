@@ -21,6 +21,12 @@ on:
     branches: [ "main" ]
     types: [ opened, synchronize, reopened ]
 
+permissions:
+  actions: read
+  security-events: write
+  packages: read
+  contents: read
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
