@@ -33,7 +33,7 @@ jobs:
           repository: eu-digital-identity-wallet/eudi-infra-ci
           ref: feat/kover_coverage_report_implementation
           path: .eudi-infra-ci
-          sparse-checkout: scripts/coverage
+          sparse-checkout: ci-scripts
           persist-credentials: false
 
       - name: Set up Java
@@ -72,7 +72,7 @@ jobs:
           fi
           kover_report="$(ls -1t "${reports[@]}" | head -n 1)"
           echo "Using Kover report: $kover_report"
-          python3 .eudi-infra-ci/scripts/coverage/kover-to-cobertura.py \
+          python3 .eudi-infra-ci/ci-scripts/kover-to-cobertura.py \
             "$kover_report" \
             coverage/cobertura.xml
 
