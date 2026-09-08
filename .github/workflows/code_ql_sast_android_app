@@ -1,0 +1,67 @@
+name: "CodeQL SAST Android Application"
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradle-task:
+        description: "Gradle task to build"
+        required: true
+        default: "assembleDevDebug"
+        type: string
+
+  pull_request:
+    branches: [ "main" ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4.37.8
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Build
+        run: ./gradlew ${{ inputs.gradle-task }} --no-daemon --stacktrace
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4.37.8
+        with:
+          category: "/language:${{ matrix.language }}"
+
+      - name: Upload CodeQL SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif
+          path: results/*.sarif
+          if-no-files-found: warn
