@@ -63,28 +63,21 @@ jobs:
         uses: github/codeql-action/analyze@v4.37.8
         with:
           category: "/language:${{ matrix.language }}"
+          output: ${{ github.workspace }}/codeql-results
 
-
-
-      - name: Debug CodeQL results
+      - name: Verify CodeQL SARIF
         if: always()
         run: |
-          echo "Current directory:"
-          pwd
-      
-          echo "Workspace:"
-          echo "$GITHUB_WORKSPACE"
-      
-          echo "Results directory:"
-          ls -la "$GITHUB_WORKSPACE/results" || true
+          echo "CodeQL results:"
+          ls -lah "${{ github.workspace }}/codeql-results" || true
       
           echo "SARIF files:"
-          find "$GITHUB_WORKSPACE" -name "*.sarif" -type f -print
+          find "${{ github.workspace }}/codeql-results" -type f -name "*.sarif" -print
 
       - name: Upload CodeQL SARIF
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: codeql-sarif
-          path: results/*.sarif
-          if-no-files-found: warn
+          path: ${{ github.workspace }}/codeql-results/*.sarif
+          if-no-files-found: error
