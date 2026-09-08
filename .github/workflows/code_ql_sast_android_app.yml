@@ -64,6 +64,23 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
+
+
+      - name: Debug CodeQL results
+        if: always()
+        run: |
+          echo "Current directory:"
+          pwd
+      
+          echo "Workspace:"
+          echo "$GITHUB_WORKSPACE"
+      
+          echo "Results directory:"
+          ls -la "$GITHUB_WORKSPACE/results" || true
+      
+          echo "SARIF files:"
+          find "$GITHUB_WORKSPACE" -name "*.sarif" -type f -print
+
       - name: Upload CodeQL SARIF
         if: always()
         uses: actions/upload-artifact@v4
