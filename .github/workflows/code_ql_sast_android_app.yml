@@ -22,6 +22,7 @@ on:
     types: [ opened, synchronize, reopened ]
 
 permissions:
+  security-events: write
   contents: read
 
 jobs:
