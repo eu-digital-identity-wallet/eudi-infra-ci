@@ -76,10 +76,10 @@ jobs:
             "$kover_report" \
             coverage/cobertura.xml
 
-      - name: Upload coverage to GitHub
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/upload-code-coverage@v1
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          file: coverage/cobertura.xml
-          language: Kotlin
-          label: code-coverage/kover
+          name: code-coverage-kover
+          path: coverage/cobertura.xml
+          if-no-files-found: error
