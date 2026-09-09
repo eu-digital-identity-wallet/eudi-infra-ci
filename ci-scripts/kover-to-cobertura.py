@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -8,6 +9,8 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
+from source_index import collect_sources
 
 
 Counter = Tuple[int, int]
@@ -28,6 +31,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help=(
             "Source directory recorded in Cobertura <sources> "
             "(repeatable). Defaults to '.' if omitted."
+        ),
+    )
+    parser.add_argument(
+        "--embed-source",
+        metavar="JSON",
+        help=(
+            "Write a sidecar JSON map of filename -> source text by reading files "
+            "from disk. Cobertura XML itself cannot store source; cobertura-to-html "
+            "uses this JSON to show Kover-style code views."
         ),
     )
     return parser.parse_args(argv)
@@ -64,12 +76,21 @@ def set_rates(target: ET.Element, source: ET.Element) -> Counter:
 def set_coverage_totals(target: ET.Element, source: ET.Element) -> None:
     line_covered, line_missed = counter_values(source, "LINE")
     branch_covered, branch_missed = counter_values(source, "BRANCH")
+    class_covered, class_missed = counter_values(source, "CLASS")
+    method_covered, method_missed = counter_values(source, "METHOD")
+    instr_covered, instr_missed = counter_values(source, "INSTRUCTION")
     target.set("line-rate", fmt_rate(line_covered, line_missed))
     target.set("branch-rate", fmt_rate(branch_covered, branch_missed))
     target.set("lines-covered", str(line_covered))
     target.set("lines-valid", str(line_covered + line_missed))
     target.set("branches-covered", str(branch_covered))
     target.set("branches-valid", str(branch_covered + branch_missed))
+    target.set("classes-covered", str(class_covered))
+    target.set("classes-valid", str(class_covered + class_missed))
+    target.set("methods-covered", str(method_covered))
+    target.set("methods-valid", str(method_covered + method_missed))
+    target.set("instructions-covered", str(instr_covered))
+    target.set("instructions-valid", str(instr_covered + instr_missed))
     target.set("complexity", "0")
     target.set("version", "1.0")
 
@@ -242,6 +263,32 @@ def write_cobertura(coverage: ET.Element, path: Path) -> None:
         tree.write(handle, encoding="utf-8", xml_declaration=False)
 
 
+def cobertura_filenames(coverage: ET.Element) -> List[str]:
+    names: List[str] = []
+    seen = set()
+    packages = coverage.find("packages")
+    if packages is None:
+        return names
+    for pkg in packages.findall("package"):
+        classes = pkg.find("classes")
+        if classes is None:
+            continue
+        for cls in classes.findall("class"):
+            filename = cls.get("filename")
+            if filename and filename not in seen:
+                seen.add(filename)
+                names.append(filename)
+    return names
+
+
+def write_embedded_sources(coverage: ET.Element, json_path: Path, roots: Sequence[str]) -> int:
+    search_roots = list(roots) if roots else ["."]
+    sources = collect_sources(cobertura_filenames(coverage), search_roots)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(sources, ensure_ascii=False), encoding="utf-8")
+    return len(sources)
+
+
 def print_summary(coverage: ET.Element, output: Path) -> None:
     line_rate = float(coverage.get("line-rate", "0"))
     branch_rate = float(coverage.get("branch-rate", "0"))
@@ -266,6 +313,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     coverage = convert_report(report, args.source_roots)
     write_cobertura(coverage, output_path)
     print_summary(coverage, output_path)
+    if args.embed_source:
+        count = write_embedded_sources(
+            coverage,
+            Path(args.embed_source),
+            args.source_roots or ["."],
+        )
+        print(f"Wrote {count} source files to {args.embed_source}")
     return 0
 
 
