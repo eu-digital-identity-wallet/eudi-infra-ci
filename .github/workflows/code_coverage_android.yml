@@ -42,9 +42,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/wrapper-validation@v6
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Generate Kover XML Coverage Report
         run: |
