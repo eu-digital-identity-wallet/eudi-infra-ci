@@ -74,12 +74,18 @@ jobs:
           echo "Using Kover report: $kover_report"
           python3 .eudi-infra-ci/ci-scripts/kover-to-cobertura.py \
             "$kover_report" \
-            coverage/cobertura.xml
+            coverage/cobertura.xml \
+            --source-root . \
+            --embed-source coverage/cobertura-sources.json
+          python3 .eudi-infra-ci/ci-scripts/cobertura-to-html.py \
+            coverage/cobertura.xml \
+            coverage/report.html \
+            --source-root . \
+            --sources-json coverage/cobertura-sources.json \
+            --github-summary "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload coverage artifact
-        if: always()
+      - name: Upload HTML coverage report
         uses: actions/upload-artifact@v7
         with:
-          name: code-coverage-kover
-          path: coverage/cobertura.xml
-          if-no-files-found: error
+          name: coverage-html
+          path: coverage/report.html
