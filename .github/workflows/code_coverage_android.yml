@@ -1,0 +1,91 @@
+name: Code Coverage (Android / Kover)
+
+on:
+  workflow_call:
+    inputs:
+      kover_task:
+        description: "Gradle task that generates the Kover XML report"
+        required: true
+        type: string
+      kover_output_path:
+        description: "Directory that contains the Kover XML report"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  code-quality: write
+
+jobs:
+  coverage:
+    name: Generate, convert, and upload coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Checkout Kover to Cobertura converter
+        uses: actions/checkout@v6
+        with:
+          repository: eu-digital-identity-wallet/eudi-infra-ci
+          ref: feat/kover_coverage_report_implementation
+          path: .eudi-infra-ci
+          sparse-checkout: ci-scripts
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/wrapper-validation@v6
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Generate Kover XML Coverage Report
+        run: |
+          task="${{ inputs.kover_task }}"
+          if ! [[ "$task" =~ ^[a-zA-Z0-9:_-]+$ ]]; then
+            echo "Invalid kover_task: '$task'. Only [a-zA-Z0-9:_-] allowed."
+            exit 1
+          fi
+          ./gradlew "$task"
+
+      - name: Convert Kover to Cobertura
+        run: |
+          output_path="${{ inputs.kover_output_path }}"
+          output_path="${output_path#./}"
+          output_path="${output_path%/}"
+          if ! [[ "$output_path" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+            echo "Invalid kover_output_path: '$output_path'."
+            exit 1
+          fi
+
+          mapfile -t reports < <(find . -path './.eudi-infra-ci' -prune -o -path "*/${output_path}/*.xml" -type f -print | sort)
+          if [ ${#reports[@]} -eq 0 ]; then
+            echo "No Kover XML report found under ${output_path}/"
+            exit 1
+          fi
+          kover_report="$(ls -1t "${reports[@]}" | head -n 1)"
+          echo "Using Kover report: $kover_report"
+          python3 .eudi-infra-ci/ci-scripts/kover-to-cobertura.py \
+            "$kover_report" \
+            coverage/cobertura.xml \
+            --source-root . \
+            --embed-source coverage/cobertura-sources.json
+          python3 .eudi-infra-ci/ci-scripts/cobertura-to-html.py \
+            coverage/cobertura.xml \
+            coverage/report.html \
+            --source-root . \
+            --sources-json coverage/cobertura-sources.json \
+            --github-summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html
+          path: coverage/report.html
