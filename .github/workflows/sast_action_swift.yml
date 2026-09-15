@@ -44,6 +44,18 @@ jobs:
         with:
           xcode-version: '26.5'
 
+      - name: Verify Xcode and simulator runtimes
+        run: |
+          xcode-select -p
+          xcodebuild -version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      - name: Install iOS Simulator runtime
+        run: |
+            sudo xcode-select -s /Applications/Xcode_26.5.app
+            xcodebuild -downloadPlatform iOS
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
