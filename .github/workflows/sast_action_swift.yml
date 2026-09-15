@@ -48,8 +48,14 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: Bundle install
-        run: bundle install
+      #- name: Bundle install
+       # run: bundle install
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.6'
+          bundler: '2.4.22'
+          bundler-cache: true
 
       - name: Run Fastlane code_coverage
         run: bundle exec fastlane code_coverage
