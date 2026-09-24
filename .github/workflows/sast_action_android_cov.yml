@@ -67,7 +67,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - uses: gradle/actions/wrapper-validation@v4
 
@@ -161,7 +161,6 @@ jobs:
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
             -Dsonar.coverage.jacoco.xmlReportPaths=${{ inputs.kover_report_path }}
-            -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: sonarsource/sonarqube-scan-action@v6.0.0
         if: github.event_name == 'pull_request_target'
@@ -179,7 +178,6 @@ jobs:
             -Dsonar.java.binaries=build/classes/kotlin/
             -Dsonar.kotlin.binaries=build/classes/kotlin/
             -Dsonar.coverage.jacoco.xmlReportPaths=${{ inputs.kover_report_path }}
-            -Dsonar.scanner.skipJreProvisioning=true
 
       - uses: actions/setup-node@v4
         if: github.repository_owner == 'eu-digital-identity-wallet' && github.ref_name == 'main'
