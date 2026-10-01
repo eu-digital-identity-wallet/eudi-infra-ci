@@ -1,4 +1,4 @@
-name: SAST - SonarCloud with Kotlin coverage (Kotlin Libs)
+name: SAST - SonarCloud with Kotlin coverage
 
 on:
   workflow_call:
