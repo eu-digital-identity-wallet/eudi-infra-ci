@@ -42,6 +42,8 @@ jobs:
     env:
       IOS_SIMULATOR_DEVICE: iPhone 17
       IOS_SIMULATOR_OS: latest
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 30
+      FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 4
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
